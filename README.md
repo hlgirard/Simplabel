@@ -2,7 +2,7 @@
 
 Graphical tool to manually label images in disctinct categories to build training datasets.
 Simply pass a list of categories, a directory containing images and start labelling.
-Support keyboard bindings to label even faster!
+Supports keyboard bindings to label even faster!
 
 ![screenshot](docs/screenshot_190124.png)
 
