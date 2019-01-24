@@ -75,8 +75,14 @@ class ImageClassifier(tk.Frame):
         tk.Button(self.root, text='Previous', height=2, width=8, command =self.previous_image).pack(in_=self.frame0, side = tk.LEFT)
 
         # Create a button for each of the categories
-        for category in self.categories:
-            tk.Button(self.root, text=category, height=2, width=8, command = partial(self.classify, category)).pack(in_=self.frame2, fill = tk.X, expand = True, side = tk.LEFT)
+        for idx, category in enumerate(self.categories):
+            txt = category + " ({})".format(idx+1)
+            tk.Button(self.root, text=txt, height=2, width=8, command = partial(self.classify, category)).pack(in_=self.frame2, fill = tk.X, expand = True, side = tk.LEFT)
+
+        # Create the key bindings
+        self.root.bind("<Key>", self.keypress_handler)
+        self.root.bind("<Left>", self.previous_image)
+        self.root.bind("<Right>", self.next_image)
 
         #Display the first image
         self.display_image()
@@ -107,14 +113,23 @@ class ImageClassifier(tk.Frame):
         '''Adds a directory entry with the name of the image and the label selected'''
         self.labeled[self.image_list[self.counter]] = category
         print('Label {} selected for image {}'.format(category, self.image_list[self.counter]))
-        self.counter += 1
-        self.display_image()
+        self.next_image()
     
-    def previous_image(self):
+    def previous_image(self, *args):
         '''Displays the previous image'''
         if self.counter > 0:
             self.counter += -1
             self.display_image()
+        else:
+            print("This is the first image, can't go back")
+    
+    def next_image(self, *args):
+        '''Displays the previous image'''
+        if self.counter <= self.max_count:
+            self.counter += 1
+            self.display_image()
+        else:
+            print("No more images")
 
     def display_image(self):
         '''Displays the image corresponding to the current value of the counter'''
@@ -139,6 +154,13 @@ class ImageClassifier(tk.Frame):
                 self.cv1.delete("all")
                 self.cv1.create_image(0, 0, anchor = 'nw', image = self.photo)
 
+    def keypress_handler(self,e):
+        try:
+            cat = int(e.char) - 1
+            if cat in range(len(self.categories)):
+                self.classify(self.categories[cat])
+        except ValueError:
+                print("Only number keys and arrows are supported")
     
     def save(self):
         '''Save the labeled dictionary to disk'''
