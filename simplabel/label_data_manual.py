@@ -67,7 +67,7 @@ class ImageClassifier(tk.Frame):
         self.frame2.pack(side = tk.BOTTOM, fill=tk.BOTH, expand=True)
 
         # Create the global buttons
-        tk.Button(self.root, text='Exit', height=2, width=8, command =self.quit).pack(in_=self.frame0, side = tk.RIGHT)
+        tk.Button(self.root, text='Exit', height=2, width=8, command =self.exit).pack(in_=self.frame0, side = tk.RIGHT)
         tk.Button(self.root, text='Reset', height=2, width=8, command =self.reset_session).pack(in_=self.frame0, side = tk.RIGHT)
         tk.Button(self.root, text='DELETE ALL', height=2, width=10, command =self.delete_saved_data).pack(in_=self.frame0, side = tk.RIGHT)
 
@@ -160,7 +160,14 @@ class ImageClassifier(tk.Frame):
             if cat in range(len(self.categories)):
                 self.classify(self.categories[cat])
         except ValueError:
-                print("Only number keys and arrows are supported")
+            if e.char == 's':
+                self.save()
+            elif e.char == 'q':
+                self.exit()
+            elif e.char == 'r':
+                self.reset_session()
+            else:
+                pass
     
     def save(self):
         '''Save the labeled dictionary to disk'''
@@ -200,6 +207,13 @@ class ImageClassifier(tk.Frame):
             self.display_image()
         else:
             pass
+
+    def exit(self):
+        '''Cleanly exits the app'''
+        result = askquestion('Save?', 'Do you want to save this session before leaving?', icon = 'warning')
+        if result == 'yes':
+            self.save()
+        self.quit()
 
 if __name__ == "__main__":
     root = tk.Tk() 
