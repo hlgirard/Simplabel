@@ -39,18 +39,18 @@ import simplabel
 root = tk.Tk() 
 directory = "data/raw"
 categories = ['dog', 'cat', 'bird']
-MyApp = ImageClassifier(root, directory, categories)
+MyApp = simplabel.ImageClassifier(root, directory, categories)
 tk.mainloop()
 ```
 
 ### Saved labels
 
-The app saves a labeled.pkl file that contains a pickeled dictionary {image_name.jpg: label}. To import the dictionary, use the following sample code:
+The app saves a labelled.pkl file that contains a pickeled dictionary {image_name.jpg: label}. To import the dictionary, use the following sample code:
 
 ```python
 import pickle
 
-with open(file,"rb") as f:
+with open("labelled.pkl","rb") as f:
     label_dict = pickle.load(f)
 ```
 
