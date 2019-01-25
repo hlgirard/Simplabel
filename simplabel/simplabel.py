@@ -124,7 +124,7 @@ class ImageClassifier(tk.Frame):
             print("This is the first image, can't go back")
     
     def next_image(self, *args):
-        '''Displays the previous image'''
+        '''Displays the next image'''
         if self.counter <= self.max_count:
             self.counter += 1
             self.display_image()

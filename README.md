@@ -14,7 +14,7 @@ Clone the repository to your computer
 git clone https://github.com/hlgirard/Simplabel.git
 ```
 
-and instal with pip 
+and install with pip 
 
 ```
 cd Simplabel
@@ -35,6 +35,7 @@ simplabel --categories dog cat bird --directory path/to/image/directory
 
 ```python
 import simplabel
+import tkinter as tk
 
 root = tk.Tk() 
 directory = "data/raw"
