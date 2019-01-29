@@ -111,9 +111,12 @@ class ImageClassifier(tk.Frame):
 
     def classify(self, category):
         '''Adds a directory entry with the name of the image and the label selected'''
-        self.labeled[self.image_list[self.counter]] = category
-        print('Label {} selected for image {}'.format(category, self.image_list[self.counter]))
-        self.next_image()
+        if self.counter > self.max_count:
+            print("No more images to label")
+        else:
+            self.labeled[self.image_list[self.counter]] = category
+            print('Label {} selected for image {}'.format(category, self.image_list[self.counter]))
+            self.next_image()
     
     def previous_image(self, *args):
         '''Displays the previous image'''
@@ -130,11 +133,13 @@ class ImageClassifier(tk.Frame):
             self.display_image()
         else:
             print("No more images")
+            self.display_end()
 
     def display_image(self):
         '''Displays the image corresponding to the current value of the counter'''
         if self.counter > self.max_count:
             print("No more images")
+            self.display_end()
         else:
             self.im = Image.open("{}{}".format(self.folder + '/', self.image_list[self.counter]))
             if (self.imwidth-self.im.size[0])<(self.imheight-self.im.size[1]):
@@ -153,6 +158,14 @@ class ImageClassifier(tk.Frame):
             else:
                 self.cv1.delete("all")
                 self.cv1.create_image(0, 0, anchor = 'nw', image = self.photo)
+
+    def display_end(self):
+        '''Handles the exit when the labelling task is finished'''
+        result = askquestion('No more images to label', 'Save before exiting?', icon = 'warning')
+        if result == 'yes':
+            self.save()
+        self.quit()
+
 
     def keypress_handler(self,e):
         try:
