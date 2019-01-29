@@ -4,6 +4,7 @@ from PIL import Image,ImageTk
 import os
 from functools import partial
 import pickle
+import time
 
 
 class ImageClassifier(tk.Frame):
@@ -26,12 +27,13 @@ class ImageClassifier(tk.Frame):
         This dict is saved to disk by the 'Save' button
     """
 
-    def __init__(self, parent, directory, categories, *args, **kwargs):
+    def __init__(self, parent, directory, categories = None, *args, **kwargs):
 
         tk.Frame.__init__(self, parent, *args, **kwargs)
 
         self.root = parent
         self.root.wm_title("Manual Image labelling")
+        self.error_out = False
 
         # Window Dimensions
         self.winwidth = 1000
@@ -41,11 +43,11 @@ class ImageClassifier(tk.Frame):
         #  Directory containing the raw images and saved dictionary
         self.folder = directory
         self.savepath = self.folder + "/labelled.pkl"
+        self.labelpath = self.folder + "/labels.pkl"
 
         # Categories for the labelling task
         self.categories = categories
-        # Add default categories
-        self.categories.append('Remove')
+        self.initialize_labels()
 
         # Initialize data
         self.initialize_data()
@@ -84,16 +86,44 @@ class ImageClassifier(tk.Frame):
         self.root.bind("<Left>", self.previous_image)
         self.root.bind("<Right>", self.next_image)
 
-        #Display the first image
+        # Display the first image
         self.display_image()
 
+    def initialize_labels(self):
+        '''Loads labels from file if it exists or use labels passed as argument (these override any file defined labels).'''
+        # Passed labels override any existing file
+        if not self.categories:
+            # Check for label file and load if it exists
+            if os.path.isfile(self.labelpath):
+                with open(self.labelpath,"rb") as f:
+                    self.categories = pickle.load(f)
+                print("Loaded categories from file: {}".format(self.categories))
+            # Exit if no labels are found
+            else:
+                print("No categories provided. Exiting.")
+                self.error_out = True
+        # If labels are passed, use these and save them to file
+        else:
+            # Add default categories
+            self.categories.append('Remove')
+            print("Using categories passed as argument: {}".format(self.categories))
+            # Save labels to file
+            with open(self.labelpath,'wb') as f:
+                pickle.dump(self.categories, f)
+        
+
     def initialize_data(self):
-        '''Loads existing data from disk if it exits and loads a list of unlabelled images found in the directory'''
+        '''Loads existing data from disk if it exists and loads a list of unlabelled images found in the directory'''
         # Initialize dictionary
         if os.path.isfile(self.savepath):
             self.labeled = self.load_dict(self.savepath)
             print("Loaded existing dictionary from disk")
-            print(self.labeled)
+            # Check that the categories used in the dictionary are in self.categories
+            if any([val not in self.categories for val in self.labeled.values()]):
+                print("Labels in dictionary do not match passed categories")
+                print("Labels in dictionary: {}".format(set(self.labeled.values())))
+                print("Categories passed: {}".format(self.categories))
+                self.error_out = True
         else:
             self.labeled = {}
             print("No dictionary found, initializing a new one")
@@ -103,7 +133,11 @@ class ImageClassifier(tk.Frame):
         for d in os.listdir(self.folder):
             if d not in self.labeled and not d.endswith('.pkl'): 
                 self.image_list.append(d)
-        print("{} images ready to label".format(len(self.image_list)))
+        if len(self.image_list) == 0:
+            
+            self.error_out = True
+        else:
+            print("{} images ready to label".format(len(self.image_list)))
 
         # Initialize counter and get number of images   
         self.counter = 0
@@ -137,9 +171,15 @@ class ImageClassifier(tk.Frame):
 
     def display_image(self):
         '''Displays the image corresponding to the current value of the counter'''
-        if self.counter > self.max_count:
+        if self.counter > self.max_count and self.max_count > -1:
             print("No more images")
             self.display_end()
+        elif self.max_count == 0:
+            print("No images to label")
+            self.destroy()
+        elif self.error_out:
+            print("Exiting application...")
+            self.destroy()
         else:
             self.im = Image.open("{}{}".format(self.folder + '/', self.image_list[self.counter]))
             if (self.imwidth-self.im.size[0])<(self.imheight-self.im.size[1]):
@@ -195,8 +235,7 @@ class ImageClassifier(tk.Frame):
     def dump_dict(self, dict, file):
         '''Pickle a dictionary to file'''
         with open(file, 'wb') as f:
-            pickle.dump(dict, f, pickle.HIGHEST_PROTOCOL)
-            f.close()
+            pickle.dump(dict, f)
 
     def reset_session(self):
         '''Deletes all labels from the current session and reload the images'''
@@ -231,6 +270,6 @@ class ImageClassifier(tk.Frame):
 if __name__ == "__main__":
     root = tk.Tk() 
     rawDirectory = "data/raw"
-    categories = ['Crystal', 'Clear', 'Aggregate']
+    categories = ['Crystal', 'Clear']
     MyApp = ImageClassifier(root, rawDirectory, categories)
     tk.mainloop()
