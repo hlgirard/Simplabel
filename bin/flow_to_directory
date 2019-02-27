@@ -1,0 +1,20 @@
+#!/usr/bin/env python
+
+import os
+import argparse
+import tkinter as tk
+
+from simplabel import utils
+
+#Setup parser
+ap = argparse.ArgumentParser()
+ap.add_argument("-r", "--rawDirectory", default=os.getcwd(), help="Path of the directory containing the raw images and labeled.pkl file. Defaults to current directory")
+ap.add_argument("-o", "--outputDirectory", help="Path of the output directory, will be created if it does not exist")
+
+args = ap.parse_args()
+
+# Get the variables from parser
+rawDirectory = args.rawDirectory
+outDirectory = args.outputDirectory
+
+utils.flow_to_dict(rawDirectory, outDirectory)

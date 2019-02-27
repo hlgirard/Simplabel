@@ -5,6 +5,7 @@ import os
 from functools import partial
 import pickle
 import time
+import sys
 
 
 class ImageClassifier(tk.Frame):
@@ -29,11 +30,11 @@ class ImageClassifier(tk.Frame):
 
     def __init__(self, parent, directory, categories = None, *args, **kwargs):
 
+        # Initialize frame
         tk.Frame.__init__(self, parent, *args, **kwargs)
 
         self.root = parent
         self.root.wm_title("Manual Image labelling")
-        self.error_out = False
 
         # Window Dimensions
         self.winwidth = 1000
@@ -42,10 +43,11 @@ class ImageClassifier(tk.Frame):
 
         #  Directory containing the raw images and saved dictionary
         self.folder = directory
-        self.savepath = self.folder + "/labelled.pkl"
+        self.savepath = self.folder + "/labeled.pkl"
         self.labelpath = self.folder + "/labels.pkl"
 
         # Categories for the labelling task
+        self.labels_from_file = False
         self.categories = categories
         self.initialize_labels()
 
@@ -97,19 +99,17 @@ class ImageClassifier(tk.Frame):
             if os.path.isfile(self.labelpath):
                 with open(self.labelpath,"rb") as f:
                     self.categories = pickle.load(f)
+                self.labels_from_file = True
                 print("Loaded categories from file: {}".format(self.categories))
             # Exit if no labels are found
             else:
                 print("No categories provided. Exiting.")
-                self.error_out = True
+                self.errorClose()
         # If labels are passed, use these and save them to file
         else:
             # Add default categories
             self.categories.append('Remove')
             print("Using categories passed as argument: {}".format(self.categories))
-            # Save labels to file
-            with open(self.labelpath,'wb') as f:
-                pickle.dump(self.categories, f)
         
 
     def initialize_data(self):
@@ -123,10 +123,15 @@ class ImageClassifier(tk.Frame):
                 print("Labels in dictionary do not match passed categories")
                 print("Labels in dictionary: {}".format(set(self.labeled.values())))
                 print("Categories passed: {}".format(self.categories))
-                self.error_out = True
+                self.errorClose()
         else:
             self.labeled = {}
             print("No dictionary found, initializing a new one")
+
+        # All checks for label consistency are over, save labels to file if they were passed as arguments
+        if not self.labels_from_file:
+            with open(self.labelpath,'wb') as f:
+                pickle.dump(self.categories, f)
 
         # Build list of images to classify
         self.image_list = []
@@ -134,8 +139,8 @@ class ImageClassifier(tk.Frame):
             if d not in self.labeled and not d.endswith('.pkl'): 
                 self.image_list.append(d)
         if len(self.image_list) == 0:
-            
-            self.error_out = True
+            print("No images found in directory.")
+            self.errorClose()
         else:
             print("{} images ready to label".format(len(self.image_list)))
 
@@ -176,10 +181,7 @@ class ImageClassifier(tk.Frame):
             self.display_end()
         elif self.max_count == 0:
             print("No images to label")
-            self.destroy()
-        elif self.error_out:
-            print("Exiting application...")
-            self.destroy()
+            self.errorClose()
         else:
             self.im = Image.open("{}{}".format(self.folder + '/', self.image_list[self.counter]))
             if (self.imwidth-self.im.size[0])<(self.imheight-self.im.size[1]):
@@ -266,6 +268,12 @@ class ImageClassifier(tk.Frame):
         if result == 'yes':
             self.save()
         self.quit()
+
+    def errorClose(self):
+        '''Closes the window when the app encouters an error it cannot recover from'''
+        print("Closing the app...")
+        self.master.destroy()
+        sys.exit()
 
 if __name__ == "__main__":
     root = tk.Tk() 

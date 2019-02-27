@@ -33,38 +33,50 @@ pip install .
 
 ## Usage
 
-### Command line tool
+### Command line tools
 
-Pass the categories and image directory on the command line to start the GUI
+Pass the categories and image directory on the command line to start labelling. Use the on-screen buttons to select a label for the current image and advance to the next one. Number keys correspond to labels and can be used instead.
 
 ```
 simplabel --categories dog cat bird --directory path/to/image/directory
 ```
 
+Once you are done labelling, use the flow_to_directory tool to copy images to distinct directories by label
+
+```
+flow_to_directory --rawDirectory data/raw --outDirectory data/labeled
+```
+
 ### Python object
 
 ```python
-import simplabel
+from simplabel import ImageClassifier
 import tkinter as tk
 
 root = tk.Tk() 
 directory = "data/raw"
 categories = ['dog', 'cat', 'bird']
-MyApp = simplabel.ImageClassifier(root, directory, categories)
+MyApp = ImageClassifier(root, directory, categories)
 tk.mainloop()
 ```
 
 ### Saved labels
 
-The app saves a labelled.pkl file that contains a pickeled dictionary {image_name.jpg: label}. To import the dictionary, use the following sample code:
+The app saves a labeled.pkl file that contains a pickeled dictionary {image_name: label}. To import the dictionary, use the following sample code:
 
 ```python
 import pickle
 
-with open("labelled.pkl","rb") as f:
+with open("labeled.pkl","rb") as f:
     label_dict = pickle.load(f)
 ```
 
-### Graphical interface
+### Move labeled images to discrete directories
 
-Use the on-screen buttons to select a label for the current image and advance to the next one. Number keys correspond to labels and can be used instead.
+This utility copies labeled images from the raw directory to discrete folders by label in the labelled directory using the dictionary created by simplabel.
+
+```python
+from simplabel import utils
+
+utils.flow_to_dict(rawDirectory, labelledDirectory)
+```
