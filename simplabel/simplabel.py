@@ -34,7 +34,7 @@ class ImageClassifier(tk.Frame):
         tk.Frame.__init__(self, parent, *args, **kwargs)
 
         self.root = parent
-        self.root.wm_title("Manual Image labelling")
+        self.root.wm_title("Simplabel")
 
         # Window Dimensions
         self.winwidth = 1000
