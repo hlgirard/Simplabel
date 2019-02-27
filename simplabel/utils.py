@@ -3,7 +3,7 @@ import pickle
 import shutil
 import sys
 
-def move_to_dict(rawDirectory, labelledDirectory):
+def flow_to_dict(rawDirectory, labelledDirectory):
     '''
     Copies labelled images to discting directories by label
 
@@ -45,4 +45,4 @@ if __name__ == "__main__":
     rawDirectory = 'data/raw'
     labelledDirectory = 'data/labeled'
 
-    move_to_dict(rawDirectory, labelledDirectory)
+    flow_to_dict(rawDirectory, labelledDirectory)
