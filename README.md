@@ -1,6 +1,6 @@
 # Simplabel
 
-Graphical tool to manually label images in disctinct categories to build training datasets.
+Graphical tool to manually label images in distinct categories to build training datasets.
 Simply pass a list of categories, a directory containing images and start labelling.
 Supports keyboard bindings to label even faster!
 
