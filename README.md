@@ -8,6 +8,16 @@ Supports keyboard bindings to label even faster!
 
 ## Installation
 
+### Install with pip
+
+Simplabel is on PyPI so it can be installed with pip
+
+```
+pip install simplabel
+```
+
+### Install from source
+
 Clone the repository to your computer
 
 ```
