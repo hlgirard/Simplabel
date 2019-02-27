@@ -254,9 +254,11 @@ class ImageClassifier(tk.Frame):
         '''Deletes all labeles from session and saved data then reloads the images'''
         result = askquestion('Are you sure?', 'Delete all saved and session data?', icon = 'warning')
         if result == 'yes':
-            print("Deleting all saved progress and reinitializing data")
+            print("Deleting all saved progress and reinitializing data and labels")
             if os.path.isfile(self.savepath):
                 os.remove(self.savepath)
+            if os.path.isfile(self.labelpath):
+                os.remove(self.labelpath)
             self.initialize_data()
             self.display_image()
         else:
