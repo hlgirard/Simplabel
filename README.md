@@ -44,13 +44,13 @@ simplabel --categories dog cat bird --directory path/to/image/directory
 ### Python object
 
 ```python
-import simplabel
+from simplabel import ImageClassifier
 import tkinter as tk
 
 root = tk.Tk() 
 directory = "data/raw"
 categories = ['dog', 'cat', 'bird']
-MyApp = simplabel.ImageClassifier(root, directory, categories)
+MyApp = ImageClassifier(root, directory, categories)
 tk.mainloop()
 ```
 
