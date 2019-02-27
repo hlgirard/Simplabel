@@ -77,6 +77,7 @@ class ImageClassifier(tk.Frame):
 
         tk.Button(self.root, text='Save', height=2, width=8, command =self.save).pack(in_=self.frame0, side = tk.LEFT)
         tk.Button(self.root, text='Previous', height=2, width=8, command =self.previous_image).pack(in_=self.frame0, side = tk.LEFT)
+        tk.Button(self.root, text='Next', height=2, width=8, command =self.next_image).pack(in_=self.frame0, side = tk.LEFT)
 
         # Create a button for each of the categories
         for idx, category in enumerate(self.categories):
