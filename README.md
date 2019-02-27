@@ -1,4 +1,5 @@
 # Simplabel
+[![PyPI version](https://badge.fury.io/py/simplabel.svg)](https://badge.fury.io/py/simplabel)
 
 Graphical tool to manually label images in distinct categories to build training datasets.
 Simply pass a list of categories, a directory containing images and start labelling.
