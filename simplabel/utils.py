@@ -23,8 +23,8 @@ def move_to_dict(rawDirectory, labelledDirectory, labelled_dict):
 
 if __name__ == "__main__":
     rawDirectory = 'data/raw'
-    labelledDirectory = 'data/labelled'
-    dictPath = rawDirectory + '/labelled.pkl'
+    labelledDirectory = 'data/labeled'
+    dictPath = rawDirectory + '/labeled.pkl'
 
     with open(dictPath,'rb') as f:
         labelled_dict = pickle.load(f)
