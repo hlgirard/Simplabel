@@ -1,11 +1,31 @@
 import os
 import pickle
 import shutil
+import sys
 
-def move_to_dict(rawDirectory, labelledDirectory, labelled_dict):
+def move_to_dict(rawDirectory, labelledDirectory):
+    '''
+    Copies labelled images to discting directories by label
+
+    Arguments
+    --------
+    rawDirectory: string
+        Path to the directory containing raw images. It must also contain a labeled.pkl file created with simplabel containing the labels
+    labelledDirectory: string
+        Path to the output directory. A folder will be created for each label in the dictionary.
+    '''
+
+    # Open the labelled dictionary
+    dictPath = rawDirectory + '/labeled.pkl'
+    if os.path.exists(dictPath):
+        with open(dictPath,'rb') as f:
+            labelled_dict = pickle.load(f)
+    else:
+        print("No dictionary found at: {}".format(dictPath))
+        sys.exit()
     # Get all categories that exist in the dictionary
     categories = set(labelled_dict.values())
-    # Check existence of main directory
+    # Check existence of output directory
     if not os.path.exists(labelledDirectory):
         os.mkdir(labelledDirectory)
     # Check existence of sub folders, create if necessary
@@ -24,9 +44,5 @@ def move_to_dict(rawDirectory, labelledDirectory, labelled_dict):
 if __name__ == "__main__":
     rawDirectory = 'data/raw'
     labelledDirectory = 'data/labeled'
-    dictPath = rawDirectory + '/labeled.pkl'
 
-    with open(dictPath,'rb') as f:
-        labelled_dict = pickle.load(f)
-
-    move_to_dict(rawDirectory, labelledDirectory, labelled_dict)
+    move_to_dict(rawDirectory, labelledDirectory)

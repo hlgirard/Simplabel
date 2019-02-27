@@ -4,7 +4,7 @@ import os
 import argparse
 import tkinter as tk
 
-from simplabel import simplabel
+import simplabel
 
 #Setup parser
 ap = argparse.ArgumentParser()

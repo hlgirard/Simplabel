@@ -65,6 +65,13 @@ with open("labelled.pkl","rb") as f:
     label_dict = pickle.load(f)
 ```
 
+### Move labeled images to discrete directories
+```python
+from simplabel import utils
+
+utils.move_to_dict(rawDirectory, labelledDirectory)
+```
+
 ### Graphical interface
 
 Use the on-screen buttons to select a label for the current image and advance to the next one. Number keys correspond to labels and can be used instead.
