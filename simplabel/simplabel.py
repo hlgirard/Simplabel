@@ -47,11 +47,13 @@ class ImageClassifier(tk.Frame):
         self.root = parent
         self.root.wm_title("Simplabel")
 
+        # Supported image file formats (all extensions supported by PIL should work)
+        self.supported_extensions = ['jpg','JPG','png','gif','JPEG','eps','bmp','tiff']
+
         # Window Dimensions
         self.winwidth = 1000
         self.imwidth = self.winwidth - 10
         self.imheight = int(self.imwidth // 1.5)
-
 
         #  Directory containing the raw images and saved dictionary
         self.folder = directory
@@ -158,17 +160,25 @@ class ImageClassifier(tk.Frame):
 
         # Build list of images to classify
         self.image_list = []
-        for d in os.listdir(self.folder):
-            if d not in self.labeled and not d.endswith('.pkl'): 
-                self.image_list.append(d)
+
+        alreadyLabeled = [d for d in os.listdir(self.folder) if (d in self.labeled) and (d.split('.')[-1] in self.supported_extensions)]
+        toLabel = [d for d in os.listdir(self.folder) if (d not in self.labeled) and (d.split('.')[-1] in self.supported_extensions)]
+
+        # Initialize counter at the numer of already labeled images
+        self.counter = len(alreadyLabeled)
+
+        # Add already labeled images first
+        self.image_list = alreadyLabeled + toLabel
+
+        # Check that there is at least one image
         if len(self.image_list) == 0:
             logging.warning("No images found in directory.")
             self.errorClose()
         else:
-            logging.info("{} images ready to label".format(len(self.image_list)))
+            logging.info("Found {} images in the directory: {}".format(len(self.image_list), self.folder))
+            logging.info("{} images left to label".format(len(self.image_list)-self.counter))
 
-        # Initialize counter and get number of images   
-        self.counter = 0
+        # Get number of images   
         self.max_count = len(self.image_list)-1
 
     def classify(self, category):
