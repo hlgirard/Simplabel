@@ -60,6 +60,9 @@ class ImageClassifier(tk.Frame):
         self.savepath = self.folder + "/labeled.pkl"
         self.labelpath = self.folder + "/labels.pkl"
 
+        # Initialize state variables
+        self.saved = True
+
         # Make a frame for global control buttons (at the top of the window)
         self.frame0 = tk.Frame(self.root, width=self.winwidth, height=10, bd=2)
         self.frame0.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
@@ -117,7 +120,6 @@ class ImageClassifier(tk.Frame):
             self.catButton.append(tk.Button(self.root, text=txt, height=2, width=8, command = partial(self.classify, category)))
             self.catButton[idx].pack(in_=self.frame2, fill = tk.X, expand = True, side = tk.LEFT)
         
-
         # Display the first image
         self.display_image()
 
@@ -193,6 +195,8 @@ class ImageClassifier(tk.Frame):
         else:
             self.labeled[self.image_list[self.counter]] = category
             logging.info('Label {} selected for image {}'.format(category, self.image_list[self.counter]))
+            if self.saved: # Reset saved status
+                self.saved = False
             self.next_image()
     
     def previous_image(self, *args):
@@ -280,15 +284,6 @@ class ImageClassifier(tk.Frame):
             else:
                 self.nextButton.config(state = tk.NORMAL)
 
-
-    def display_end(self):
-        '''Handles the exit when the labelling task is finished'''
-        result = askquestion('No more images to label', 'Save before exiting?', icon = 'warning')
-        if result == 'yes':
-            self.save()
-        self.quit()
-
-
     def keypress_handler(self,e):
         try:
             cat = int(e.char) - 1
@@ -308,6 +303,7 @@ class ImageClassifier(tk.Frame):
         '''Save the labeled dictionary to disk'''
         self.dump_dict(self.labeled, self.savepath)
         self.saveButton.config(highlightbackground='#3E4149')
+        self.saved = True
         logging.info("Saved data to file")
     
     def load_dict(self, file):
@@ -346,9 +342,10 @@ class ImageClassifier(tk.Frame):
 
     def exit(self):
         '''Cleanly exits the app'''
-        result = askquestion('Save?', 'Do you want to save this session before leaving?', icon = 'warning')
-        if result == 'yes':
-            self.save()
+        if not self.saved:
+            result = askquestion('Save?', 'Do you want to save this session before leaving?', icon = 'warning')
+            if result == 'yes':
+                self.save()
         self.quit()
 
     def errorClose(self):
