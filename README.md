@@ -36,11 +36,14 @@ pip install .
 
 ### Command line tools
 
-Pass the categories and image directory on the command line to start labelling. Use the on-screen buttons to select a label for the current image and advance to the next one. Number keys correspond to labels and can be used instead.
+Pass the categories and image directory on the command line to start labelling. Use the on-screen buttons to select a label for the current image and advance to the next one. Number keys correspond to labels and can be used instead. A 'remove' label is automatically added to the list of passed categories.
 
 ```
 simplabel --categories dog cat bird --directory path/to/image/directory
 ```
+
+After the first use, labels are stored in 'labels.pkl' and there is no need to pass the '--categories' argument unless you want to add labels.
+You can also use '--reset' to delete the saved labels and dictionary from the directory before execution.
 
 Once you are done labelling, use the flow_to_directory tool to copy images to distinct directories by label
 

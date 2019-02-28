@@ -38,11 +38,11 @@ class ImageClassifier(tk.Frame):
 
         # Initialize logger
         if verbose == 1:
-            logging.basicConfig(level=logging.INFO)
+            logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
         elif verbose == 2:
-            logging.basicConfig(level=logging.DEBUG)
+            logging.basicConfig(level=logging.DEBUG, format='%(levelname)s - %(message)s')
         else:
-            logging.basicConfig(level=logging.WARNING)
+            logging.basicConfig(level=logging.WARNING, format='%(levelname)s - %(message)s')
 
         self.root = parent
         self.root.wm_title("Simplabel")
@@ -319,7 +319,7 @@ class ImageClassifier(tk.Frame):
     
     def delete_saved_data(self):
         '''Deletes all labels from session and saved data then closes the app'''
-        result = askquestion('Are you sure?', 'Delete all saved and session data?', icon = 'warning')
+        result = askquestion('Are you sure?', 'This action will delete all saved and session data and quit the app. Continue?', icon = 'warning')
         if result == 'yes':
             logging.warning("Deleting all saved data and exiting")
             if os.path.isfile(self.savepath):
@@ -342,6 +342,19 @@ class ImageClassifier(tk.Frame):
         logging.info("Closing the app...")
         self.master.destroy()
         sys.exit()
+
+def labelTask(rawDirectory, categories, verbosity = 0):
+    root = tk.Tk()
+    ImageClassifier(root, rawDirectory, categories, verbosity)
+    tk.mainloop()
+
+    savepath = rawDirectory + 'labeled.pkl'
+    
+    if os.path.exists(savepath):
+        with open(savepath, 'rb') as f:
+            return pickle.load(f)
+    else:
+        return
 
 if __name__ == "__main__":
     root = tk.Tk() 
