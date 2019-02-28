@@ -81,12 +81,14 @@ class ImageClassifier(tk.Frame):
         tk.Button(self.root, text='Reset', height=2, width=8, command =self.reset_session).pack(in_=self.frame0, side = tk.RIGHT)
         tk.Button(self.root, text='DELETE ALL', height=2, width=10, command =self.delete_saved_data).pack(in_=self.frame0, side = tk.RIGHT)
 
-        tk.Button(self.root, text='Save', height=2, width=8, command =self.save).pack(in_=self.frame0, side = tk.LEFT)
+        self.saveButton = tk.Button(self.root, text='Save', height=2, width=8, command =self.save)
+        self.saveButton.pack(in_=self.frame0, side = tk.LEFT)
         self.prevButton = tk.Button(self.root, text='Previous', height=2, width=8, command =self.previous_image)
         self.prevButton.pack(in_=self.frame0, side = tk.LEFT)
         self.nextButton = tk.Button(self.root, text='Next', height=2, width=8, command =self.next_image)
         self.nextButton.pack(in_=self.frame0, side = tk.LEFT)
         tk.Button(self.root, text='Next unlabeled', height=2, width=8, wraplength=80, command =self.goto_next_unlabeled).pack(in_=self.frame0, side = tk.LEFT)
+        self.buttonOrigColor = self.saveButton.config()['highlightbackground'][-1]
 
         # Create a textbox for the current image information
         self.infoText = tk.Text(self.root, height=2, width=40)
@@ -114,7 +116,7 @@ class ImageClassifier(tk.Frame):
             txt = category + " ({})".format(idx+1)
             self.catButton.append(tk.Button(self.root, text=txt, height=2, width=8, command = partial(self.classify, category)))
             self.catButton[idx].pack(in_=self.frame2, fill = tk.X, expand = True, side = tk.LEFT)
-        self.buttonOrigColor = self.catButton[0].config()['highlightbackground'][-1]
+        
 
         # Display the first image
         self.display_image()
@@ -256,6 +258,7 @@ class ImageClassifier(tk.Frame):
             self.infoText.config(state=tk.DISABLED)
 
             # Reset button styles (RAISED)
+            self.saveButton.config(highlightbackground = self.buttonOrigColor)
             for i in range(len(self.catButton)):
                 self.catButton[i].config(highlightbackground = self.buttonOrigColor)
 
@@ -304,6 +307,7 @@ class ImageClassifier(tk.Frame):
     def save(self):
         '''Save the labeled dictionary to disk'''
         self.dump_dict(self.labeled, self.savepath)
+        self.saveButton.config(highlightbackground='#3E4149')
         logging.info("Saved data to file")
     
     def load_dict(self, file):
