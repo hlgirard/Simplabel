@@ -60,14 +60,6 @@ class ImageClassifier(tk.Frame):
         self.savepath = self.folder + "/labeled.pkl"
         self.labelpath = self.folder + "/labels.pkl"
 
-        # Categories for the labelling task
-        self.labels_from_file = False
-        self.categories = categories
-        self.initialize_labels()
-
-        # Initialize data
-        self.initialize_data()
-
         # Make a frame for global control buttons (at the top of the window)
         self.frame0 = tk.Frame(self.root, width=self.winwidth, height=10, bd=2)
         self.frame0.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
@@ -97,9 +89,24 @@ class ImageClassifier(tk.Frame):
         tk.Button(self.root, text='Next unlabeled', height=2, width=8, wraplength=80, command =self.goto_next_unlabeled).pack(in_=self.frame0, side = tk.LEFT)
 
         # Create a textbox for the current image information
-        self.infoText = tk.Text(self.root, height=1, width=40)
+        self.infoText = tk.Text(self.root, height=2, width=40)
         self.infoText.pack(in_=self.frame0)
+        self.infoText.tag_config("c", justify=tk.CENTER)
+        self.infoText.tag_config("r", foreground="#8B0000")
         self.infoText.config(state=tk.DISABLED)
+
+        # Create the key bindings
+        self.root.bind("<Key>", self.keypress_handler)
+        self.root.bind("<Left>", self.previous_image)
+        self.root.bind("<Right>", self.next_image)
+
+        # Categories for the labelling task
+        self.labels_from_file = False
+        self.categories = categories
+        self.initialize_labels()
+
+        # Initialize data
+        self.initialize_data()
 
         # Create a button for each of the categories
         self.catButton = []
@@ -108,11 +115,6 @@ class ImageClassifier(tk.Frame):
             self.catButton.append(tk.Button(self.root, text=txt, height=2, width=8, command = partial(self.classify, category)))
             self.catButton[idx].pack(in_=self.frame2, fill = tk.X, expand = True, side = tk.LEFT)
         self.buttonOrigColor = self.catButton[0].config()['highlightbackground'][-1]
-
-        # Create the key bindings
-        self.root.bind("<Key>", self.keypress_handler)
-        self.root.bind("<Left>", self.previous_image)
-        self.root.bind("<Right>", self.next_image)
 
         # Display the first image
         self.display_image()
@@ -249,8 +251,8 @@ class ImageClassifier(tk.Frame):
 
             # Edit the text information
             self.infoText.config(state=tk.NORMAL)
-            self.infoText.delete(1.0, tk.END)
-            self.infoText.insert(tk.END,"Image {}/{}, Filename: {}".format(self.counter+1,self.max_count+1,img))
+            self.infoText.delete('1.0', '1.end')
+            self.infoText.insert('1.0',"Image {}/{}, Filename: {}".format(self.counter+1,self.max_count+1,img), 'c')
             self.infoText.config(state=tk.DISABLED)
 
             # Reset button styles (RAISED)
