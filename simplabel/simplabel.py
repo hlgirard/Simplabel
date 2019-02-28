@@ -94,6 +94,7 @@ class ImageClassifier(tk.Frame):
         self.prevButton.pack(in_=self.frame0, side = tk.LEFT)
         self.nextButton = tk.Button(self.root, text='Next', height=2, width=8, command =self.next_image)
         self.nextButton.pack(in_=self.frame0, side = tk.LEFT)
+        tk.Button(self.root, text='Next unlabeled', height=2, width=8, wraplength=80, command =self.goto_next_unlabeled).pack(in_=self.frame0, side = tk.LEFT)
 
         # Create a textbox for the current image information
         self.infoText = tk.Text(self.root, height=1, width=30)
@@ -206,6 +207,14 @@ class ImageClassifier(tk.Frame):
         else:
             logging.info("No more images")
             self.display_end()
+
+    def goto_next_unlabeled(self):
+        '''Displays the unlabeled image with the smallest index number'''
+        for idx, img in enumerate(self.image_list):
+            if img not in self.labeled:
+                self.counter = idx
+                self.display_image()
+                break
 
     def display_image(self):
         '''Displays the image corresponding to the current value of the counter'''
