@@ -79,6 +79,11 @@ class ImageClassifier(tk.Frame):
         tk.Button(self.root, text='Previous', height=2, width=8, command =self.previous_image).pack(in_=self.frame0, side = tk.LEFT)
         tk.Button(self.root, text='Next', height=2, width=8, command =self.next_image).pack(in_=self.frame0, side = tk.LEFT)
 
+        # Create a textbox for the current image information
+        self.infoText = tk.Text(self.root, height=1, width=30)
+        self.infoText.pack(in_=self.frame0)
+        self.infoText.config(state=tk.DISABLED)
+
         # Create a button for each of the categories
         self.catButton = []
         for idx, category in enumerate(self.categories):
@@ -210,6 +215,12 @@ class ImageClassifier(tk.Frame):
                 self.cv1.delete("all")
                 self.cv1.create_image(0, 0, anchor = 'nw', image = self.photo)
 
+            # Edit the text information
+            self.infoText.config(state=tk.NORMAL)
+            self.infoText.delete(1.0, tk.END)
+            self.infoText.insert(tk.END,"Image {}/{}, Filename: {}".format(self.counter+1,self.max_count+1,img))
+            self.infoText.config(state=tk.DISABLED)
+
             # Reset button styles (RAISED)
             for i in range(len(self.catButton)):
                 self.catButton[i].config(highlightbackground = self.buttonOrigColor)
@@ -219,7 +230,6 @@ class ImageClassifier(tk.Frame):
                 cat = self.labeled[img]
                 idxCat = self.categories.index(cat)
                 self.catButton[idxCat].config(highlightbackground='#3E4149')
-                print("Changing button state for {}".format(self.categories[idxCat]))
 
     def display_end(self):
         '''Handles the exit when the labelling task is finished'''
