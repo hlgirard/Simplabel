@@ -343,19 +343,6 @@ class ImageClassifier(tk.Frame):
         self.master.destroy()
         sys.exit()
 
-def labelTask(rawDirectory, categories, verbosity = 0):
-    root = tk.Tk()
-    ImageClassifier(root, rawDirectory, categories, verbosity)
-    tk.mainloop()
-
-    savepath = rawDirectory + 'labeled.pkl'
-    
-    if os.path.exists(savepath):
-        with open(savepath, 'rb') as f:
-            return pickle.load(f)
-    else:
-        return
-
 if __name__ == "__main__":
     root = tk.Tk() 
     rawDirectory = "data/raw"
