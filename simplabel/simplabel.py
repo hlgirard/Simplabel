@@ -97,7 +97,7 @@ class ImageClassifier(tk.Frame):
         tk.Button(self.root, text='Next unlabeled', height=2, width=8, wraplength=80, command =self.goto_next_unlabeled).pack(in_=self.frame0, side = tk.LEFT)
 
         # Create a textbox for the current image information
-        self.infoText = tk.Text(self.root, height=1, width=30)
+        self.infoText = tk.Text(self.root, height=1, width=40)
         self.infoText.pack(in_=self.frame0)
         self.infoText.config(state=tk.DISABLED)
 
@@ -206,7 +206,6 @@ class ImageClassifier(tk.Frame):
             self.display_image()
         else:
             logging.info("No more images")
-            self.display_end()
 
     def goto_next_unlabeled(self):
         '''Displays the unlabeled image with the smallest index number'''
@@ -219,11 +218,11 @@ class ImageClassifier(tk.Frame):
     def display_image(self):
         '''Displays the image corresponding to the current value of the counter'''
 
-        # Exit if there are no more images to label
-        # TODO: Instead of exiting, let use browse previous images and exit at their leisure
+        # If the counter overflows, go back to the last image
         if self.counter > self.max_count and self.max_count > -1:
-            logging.info("No more images")
-            self.display_end()
+            logging.debug("Counter overflowed")
+            self.counter = self.max_count
+            self.display_image()
         # If there are no images to label, exit
         elif self.max_count == 0:
             logging.warning("No images to label")
