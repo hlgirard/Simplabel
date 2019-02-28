@@ -6,6 +6,7 @@ from functools import partial
 import pickle
 import time
 import sys
+import logging
 
 
 class ImageClassifier(tk.Frame):
@@ -20,6 +21,8 @@ class ImageClassifier(tk.Frame):
         Directory to explore for the images to label (must contain only image files)
     categories : list[string]
         Disting categories to use for labelling
+    verbose : int
+        Logging level, 0: WARNING, 1: INFO, 2: DEBUG
 
     Notable attributes
     -------
@@ -28,10 +31,18 @@ class ImageClassifier(tk.Frame):
         This dict is saved to disk by the 'Save' button
     """
 
-    def __init__(self, parent, directory, categories = None, *args, **kwargs):
+    def __init__(self, parent, directory, categories = None, verbose = 0, *args, **kwargs):
 
         # Initialize frame
         tk.Frame.__init__(self, parent, *args, **kwargs)
+
+        # Initialize logger
+        if verbose == 1:
+            logging.basicConfig(level=logging.INFO)
+        elif verbose == 2:
+            logging.basicConfig(level=logging.DEBUG)
+        else:
+            logging.basicConfig(level=logging.WARNING)
 
         self.root = parent
         self.root.wm_title("Simplabel")
@@ -40,6 +51,7 @@ class ImageClassifier(tk.Frame):
         self.winwidth = 1000
         self.imwidth = self.winwidth - 10
         self.imheight = int(self.imwidth // 1.5)
+
 
         #  Directory containing the raw images and saved dictionary
         self.folder = directory
@@ -76,8 +88,10 @@ class ImageClassifier(tk.Frame):
         tk.Button(self.root, text='DELETE ALL', height=2, width=10, command =self.delete_saved_data).pack(in_=self.frame0, side = tk.RIGHT)
 
         tk.Button(self.root, text='Save', height=2, width=8, command =self.save).pack(in_=self.frame0, side = tk.LEFT)
-        tk.Button(self.root, text='Previous', height=2, width=8, command =self.previous_image).pack(in_=self.frame0, side = tk.LEFT)
-        tk.Button(self.root, text='Next', height=2, width=8, command =self.next_image).pack(in_=self.frame0, side = tk.LEFT)
+        self.prevButton = tk.Button(self.root, text='Previous', height=2, width=8, command =self.previous_image)
+        self.prevButton.pack(in_=self.frame0, side = tk.LEFT)
+        self.nextButton = tk.Button(self.root, text='Next', height=2, width=8, command =self.next_image)
+        self.nextButton.pack(in_=self.frame0, side = tk.LEFT)
 
         # Create a textbox for the current image information
         self.infoText = tk.Text(self.root, height=1, width=30)
@@ -109,16 +123,16 @@ class ImageClassifier(tk.Frame):
                 with open(self.labelpath,"rb") as f:
                     self.categories = pickle.load(f)
                 self.labels_from_file = True
-                print("Loaded categories from file: {}".format(self.categories))
+                logging.info("Loaded categories from file: {}".format(self.categories))
             # Exit if no labels are found
             else:
-                print("No categories provided. Exiting.")
+                logging.warning("No categories provided. Exiting.")
                 self.errorClose()
         # If labels are passed, use these and save them to file
         else:
             # Add default categories
             self.categories.append('Remove')
-            print("Using categories passed as argument: {}".format(self.categories))
+            logging.info("Using categories passed as argument: {}".format(self.categories))
         
 
     def initialize_data(self):
@@ -126,16 +140,16 @@ class ImageClassifier(tk.Frame):
         # Initialize dictionary
         if os.path.isfile(self.savepath):
             self.labeled = self.load_dict(self.savepath)
-            print("Loaded existing dictionary from disk")
+            logging.info("Loaded existing dictionary from disk")
             # Check that the categories used in the dictionary are in self.categories
             if any([val not in self.categories for val in self.labeled.values()]):
-                print("Labels in dictionary do not match passed categories")
-                print("Labels in dictionary: {}".format(set(self.labeled.values())))
-                print("Categories passed: {}".format(self.categories))
+                logging.warning("Labels in dictionary do not match passed categories")
+                logging.warning("Labels in dictionary: {}".format(set(self.labeled.values())))
+                logging.warning("Categories passed: {}".format(self.categories))
                 self.errorClose()
         else:
             self.labeled = {}
-            print("No dictionary found, initializing a new one")
+            logging.info("No dictionary found, initializing a new one")
 
         # All checks for label consistency are over, save labels to file if they were passed as arguments
         if not self.labels_from_file:
@@ -148,10 +162,10 @@ class ImageClassifier(tk.Frame):
             if d not in self.labeled and not d.endswith('.pkl'): 
                 self.image_list.append(d)
         if len(self.image_list) == 0:
-            print("No images found in directory.")
+            logging.warning("No images found in directory.")
             self.errorClose()
         else:
-            print("{} images ready to label".format(len(self.image_list)))
+            logging.info("{} images ready to label".format(len(self.image_list)))
 
         # Initialize counter and get number of images   
         self.counter = 0
@@ -160,10 +174,10 @@ class ImageClassifier(tk.Frame):
     def classify(self, category):
         '''Adds a directory entry with the name of the image and the label selected'''
         if self.counter > self.max_count:
-            print("No more images to label")
+            logging.info("No more images to label")
         else:
             self.labeled[self.image_list[self.counter]] = category
-            print('Label {} selected for image {}'.format(category, self.image_list[self.counter]))
+            logging.info('Label {} selected for image {}'.format(category, self.image_list[self.counter]))
             self.next_image()
     
     def previous_image(self, *args):
@@ -172,7 +186,7 @@ class ImageClassifier(tk.Frame):
             self.counter += -1
             self.display_image()
         else:
-            print("This is the first image, can't go back")
+            logging.info("This is the first image, can't go back")
     
     def next_image(self, *args):
         '''Displays the next image'''
@@ -180,7 +194,7 @@ class ImageClassifier(tk.Frame):
             self.counter += 1
             self.display_image()
         else:
-            print("No more images")
+            logging.info("No more images")
             self.display_end()
 
     def display_image(self):
@@ -189,11 +203,11 @@ class ImageClassifier(tk.Frame):
         # Exit if there are no more images to label
         # TODO: Instead of exiting, let use browse previous images and exit at their leisure
         if self.counter > self.max_count and self.max_count > -1:
-            print("No more images")
+            logging.info("No more images")
             self.display_end()
         # If there are no images to label, exit
         elif self.max_count == 0:
-            print("No images to label")
+            logging.warning("No images to label")
             self.errorClose()
         else:
             img = self.image_list[self.counter] # Name of current image
@@ -231,6 +245,19 @@ class ImageClassifier(tk.Frame):
                 idxCat = self.categories.index(cat)
                 self.catButton[idxCat].config(highlightbackground='#3E4149')
 
+            # Disable back button if on first image
+            if self.counter == 0:
+                self.prevButton.config(state = tk.DISABLED)
+            else:
+                self.prevButton.config(state = tk.NORMAL)
+
+            # Disable next button on last image
+            if self.counter == self.max_count:
+                self.nextButton.config(state = tk.DISABLED)
+            else:
+                self.nextButton.config(state = tk.NORMAL)
+
+
     def display_end(self):
         '''Handles the exit when the labelling task is finished'''
         result = askquestion('No more images to label', 'Save before exiting?', icon = 'warning')
@@ -257,7 +284,7 @@ class ImageClassifier(tk.Frame):
     def save(self):
         '''Save the labeled dictionary to disk'''
         self.dump_dict(self.labeled, self.savepath)
-        print("Saved data to file")
+        logging.info("Saved data to file")
     
     def load_dict(self, file):
         '''Read a pickeled dictionary from file'''
@@ -273,7 +300,7 @@ class ImageClassifier(tk.Frame):
         '''Deletes all labels from the current session and reload the images'''
         result = askquestion('Are you sure?', 'Delete data since last save?', icon = 'warning')
         if result == 'yes':
-            print("Resetting session since last save and reinitializing date")
+            logging.warning("Resetting session since last save and reinitializing date")
             self.labeled = {}
             self.initialize_data()
             self.display_image()
@@ -284,7 +311,7 @@ class ImageClassifier(tk.Frame):
         '''Deletes all labels from session and saved data then closes the app'''
         result = askquestion('Are you sure?', 'Delete all saved and session data?', icon = 'warning')
         if result == 'yes':
-            print("Deleting all saved data and exiting")
+            logging.warning("Deleting all saved data and exiting")
             if os.path.isfile(self.savepath):
                 os.remove(self.savepath)
             if os.path.isfile(self.labelpath):
@@ -302,7 +329,7 @@ class ImageClassifier(tk.Frame):
 
     def errorClose(self):
         '''Closes the window when the app encouters an error it cannot recover from'''
-        print("Closing the app...")
+        logging.info("Closing the app...")
         self.master.destroy()
         sys.exit()
 
@@ -310,5 +337,5 @@ if __name__ == "__main__":
     root = tk.Tk() 
     rawDirectory = "data/raw"
     categories = ['Crystal', 'Clear']
-    MyApp = ImageClassifier(root, rawDirectory, categories)
+    MyApp = ImageClassifier(root, rawDirectory, categories, 2)
     tk.mainloop()
