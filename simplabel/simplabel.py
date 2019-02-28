@@ -80,9 +80,12 @@ class ImageClassifier(tk.Frame):
         tk.Button(self.root, text='Next', height=2, width=8, command =self.next_image).pack(in_=self.frame0, side = tk.LEFT)
 
         # Create a button for each of the categories
+        self.catButton = []
         for idx, category in enumerate(self.categories):
             txt = category + " ({})".format(idx+1)
-            tk.Button(self.root, text=txt, height=2, width=8, command = partial(self.classify, category)).pack(in_=self.frame2, fill = tk.X, expand = True, side = tk.LEFT)
+            self.catButton.append(tk.Button(self.root, text=txt, height=2, width=8, command = partial(self.classify, category)))
+            self.catButton[idx].pack(in_=self.frame2, fill = tk.X, expand = True, side = tk.LEFT)
+        self.buttonOrigColor = self.catButton[0].config()['highlightbackground'][-1]
 
         # Create the key bindings
         self.root.bind("<Key>", self.keypress_handler)
@@ -177,14 +180,19 @@ class ImageClassifier(tk.Frame):
 
     def display_image(self):
         '''Displays the image corresponding to the current value of the counter'''
+
+        # Exit if there are no more images to label
+        # TODO: Instead of exiting, let use browse previous images and exit at their leisure
         if self.counter > self.max_count and self.max_count > -1:
             print("No more images")
             self.display_end()
+        # If there are no images to label, exit
         elif self.max_count == 0:
             print("No images to label")
             self.errorClose()
         else:
-            self.im = Image.open("{}{}".format(self.folder + '/', self.image_list[self.counter]))
+            img = self.image_list[self.counter] # Name of current image
+            self.im = Image.open("{}{}".format(self.folder + '/', img))
             if (self.imwidth-self.im.size[0])<(self.imheight-self.im.size[1]):
                 width = self.imwidth
                 height = width*self.im.size[1]/self.im.size[0]
@@ -201,6 +209,17 @@ class ImageClassifier(tk.Frame):
             else:
                 self.cv1.delete("all")
                 self.cv1.create_image(0, 0, anchor = 'nw', image = self.photo)
+
+            # Reset button styles (RAISED)
+            for i in range(len(self.catButton)):
+                self.catButton[i].config(highlightbackground = self.buttonOrigColor)
+
+            # Sink the currently associated label if it exists
+            if img in self.labeled:
+                cat = self.labeled[img]
+                idxCat = self.categories.index(cat)
+                self.catButton[idxCat].config(highlightbackground='#3E4149')
+                print("Changing button state for {}".format(self.categories[idxCat]))
 
     def display_end(self):
         '''Handles the exit when the labelling task is finished'''
