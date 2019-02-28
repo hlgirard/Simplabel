@@ -5,7 +5,7 @@ Graphical tool to manually label images in distinct categories to build training
 Simply pass a list of categories, a directory containing images and start labelling.
 Supports keyboard bindings to label even faster!
 
-![screenshot](docs/screenshot_190124.png)
+![screenshot](docs/screenshot_190228.png)
 
 ## Installation
 
