@@ -31,12 +31,13 @@ class ImageClassifier(tk.Frame):
         This dict is saved to disk by the 'Save' button
     """
 
-    def __init__(self, parent, directory, categories = None, verbose = 0, *args, **kwargs):
+    def __init__(self, parent, directory, categories = None, verbose = 0, username = None, *args, **kwargs):
 
         # Initialize frame
         tk.Frame.__init__(self, parent, *args, **kwargs)
 
         # Initialize logger
+        verbose = 2 # FIXME: verbosity is set to debug level
         if verbose == 1:
             logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
         elif verbose == 2:
@@ -55,16 +56,29 @@ class ImageClassifier(tk.Frame):
         self.imwidth = self.winwidth - 10
         self.imheight = int(self.imwidth // 1.5)
 
-        #  Directory containing the raw images and saved dictionary
+        # Set the username for the current session
+        if isinstance(username, str):
+            self.username = username.strip().lower()
+            logging.info("Username: {}".format(self.username))
+        else:
+            self.username = "guest"
+            logging.info("No username passed, saving as guest")
+
+        #  Directory containing the raw images
         self.folder = directory
-        self.savepath = self.folder + "/labeled.pkl"
+
+        # Directory containing the saved labeled dictionary
+        ## Note: username will be "guest" if none was passed as command line argument
+        self.savepath = self.folder + "/labeled_" + self.username +".pkl"
+            
+        # Directory containing the labels
         self.labelpath = self.folder + "/labels.pkl"
 
         # Initialize state variables
         self.saved = True
 
         # Make a frame for global control buttons (at the top of the window)
-        self.frame0 = tk.Frame(self.root, width=self.winwidth, height=10, bd=2)
+        self.frame0 = tk.Frame(self.root, width=self.winwidth, height=24, bd=2)
         self.frame0.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         # Make a frame to display the image
@@ -94,7 +108,7 @@ class ImageClassifier(tk.Frame):
         self.buttonOrigColor = self.saveButton.config()['highlightbackground'][-1]
 
         # Create a textbox for the current image information
-        self.infoText = tk.Text(self.root, height=2, width=40)
+        self.infoText = tk.Text(self.root, height=2, width=65, wrap=None)
         self.infoText.pack(in_=self.frame0)
         self.infoText.tag_config("c", justify=tk.CENTER)
         self.infoText.tag_config("r", foreground="#8B0000")
@@ -173,16 +187,17 @@ class ImageClassifier(tk.Frame):
         if len(list_image_files) > 0:
             alreadyLabeled = [d for d in list_image_files if d in self.labeled]
             toLabel = [d for d in list_image_files if d not in self.labeled]
-        ## Otherwise, list and check subfolders
+        ## Otherwise, list and check subdirectories
         else:
+            logging.info("No image files in main directory, searching sub-directories...")
             alreadyLabeled = []
             toLabel = []
             sub_folder_list = [dirName for dirName in next(os.walk(self.folder))[1] if not dirName.startswith('.')]
             for dirName in sub_folder_list:
                 dir_path = os.path.join(self.folder, dirName)
                 img_list = [d for d in os.listdir(dir_path) if d.split('.')[-1] in self.supported_extensions]
-                alreadyLabeled.extend([dirName + '/' + d for d in img_list if d in self.labeled])
-                toLabel.extend([dirName + '/' + d for d in img_list if d not in self.labeled])
+                alreadyLabeled.extend([dirName + '/' + d for d in img_list if (dirName + '/' + d) in self.labeled])
+                toLabel.extend([dirName + '/' + d for d in img_list if (dirName + '/' + d) not in self.labeled])
 
 
         # Initialize counter at the numer of already labeled images
@@ -242,7 +257,7 @@ class ImageClassifier(tk.Frame):
 
         # If the counter overflows, go back to the last image
         if self.counter > self.max_count and self.max_count > -1:
-            logging.debug("Counter overflowed")
+            logging.debug("display_image - Counter overflowed")
             self.counter = self.max_count
             self.display_image()
         # If there are no images to label, exit
@@ -272,7 +287,9 @@ class ImageClassifier(tk.Frame):
             # Edit the text information
             self.infoText.config(state=tk.NORMAL)
             self.infoText.delete('1.0', '1.end')
+            self.infoText.delete('2.0', tk.END)
             self.infoText.insert('1.0',"Image {}/{}, Filename: {}".format(self.counter+1,self.max_count+1,img), 'c')
+            self.infoText.insert('2.0', "\nUser: {}".format("Guest"), 'c') # TODO: implement username, might not need to erase every time if info is static?
             self.infoText.config(state=tk.DISABLED)
 
             # Reset button styles (RAISED)

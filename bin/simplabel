@@ -9,8 +9,10 @@ import simplabel
 #Setup parser
 ap = argparse.ArgumentParser()
 ap.add_argument("-d", "--directory", default=os.getcwd(), help="Path of the directory")
-ap.add_argument("-c", "--categories", nargs='*', default=None, help="List of categories")
+ap.add_argument("-c", "--categories", nargs='+', default=None, help="List of categories")
 ap.add_argument("-v", "--verbose", action='store_true', help="Enable verbose mode")
+ap.add_argument("-u", "--user", nargs = 1, help="Set username for the current session")
+ap.add_argument("-r", "--reconcile", action='store_true', help="Reconcile selections from different users where the labels are different")
 ap.add_argument("--reset", action='store_true', help="Deletes any existing data and starts a new labelling task")
 
 args = ap.parse_args()
@@ -19,6 +21,8 @@ args = ap.parse_args()
 rawDirectory = args.directory
 categories = args.categories
 verbosity = 1 if args.verbose else 0
+username = args.user
+bReconcile = args.reconcile
 
 # Reset all saved data if requested
 if args.reset:
@@ -31,5 +35,5 @@ if args.reset:
 
 # Launch the app
 root = tk.Tk() 
-MyApp = simplabel.ImageClassifier(root, rawDirectory, categories, verbosity)
+MyApp = simplabel.ImageClassifier(root, rawDirectory, categories, verbosity, username)
 tk.mainloop()
