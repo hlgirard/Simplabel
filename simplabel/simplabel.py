@@ -7,6 +7,7 @@ import pickle
 import time
 import sys
 import logging
+import random
 
 
 class ImageClassifier(tk.Frame):
@@ -51,6 +52,9 @@ class ImageClassifier(tk.Frame):
         # Supported image file formats (all extensions supported by PIL should work)
         self.supported_extensions = ['jpg','JPG','png','gif','JPEG','eps','bmp','tiff']
 
+        # Define colors to be used for users
+        self.colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+
         # Window Dimensions
         self.winwidth = 1000
         self.imwidth = self.winwidth - 10
@@ -63,6 +67,10 @@ class ImageClassifier(tk.Frame):
         else:
             self.username = "guest"
             logging.info("No username passed, saving as guest")
+
+        # Choose a color for the user
+        random.seed(a = self.username)
+        self.userColor = random.choice(self.colors)
 
         #  Directory containing the raw images
         self.folder = directory
@@ -112,6 +120,11 @@ class ImageClassifier(tk.Frame):
         self.infoText.pack(in_=self.frame0)
         self.infoText.tag_config("c", justify=tk.CENTER)
         self.infoText.tag_config("r", foreground="#8B0000")
+        self.infoText.tag_config("userColor", foreground=self.userColor)
+        # Print the name of the current user 
+        # TODO: in reconcile mode this should show user colors
+        self.infoText.insert('2.0', "\nUser:", 'c')
+        self.infoText.insert(tk.END, " {}".format(self.username), ('c', 'userColor'))
         self.infoText.config(state=tk.DISABLED)
 
         # Create the key bindings
@@ -287,9 +300,7 @@ class ImageClassifier(tk.Frame):
             # Edit the text information
             self.infoText.config(state=tk.NORMAL)
             self.infoText.delete('1.0', '1.end')
-            self.infoText.delete('2.0', tk.END)
-            self.infoText.insert('1.0',"Image {}/{}, Filename: {}".format(self.counter+1,self.max_count+1,img), 'c')
-            self.infoText.insert('2.0', "\nUser: {}".format("Guest"), 'c') # TODO: implement username, might not need to erase every time if info is static?
+            self.infoText.insert('1.0',"Image {}/{} - Filename: {}".format(self.counter+1,self.max_count+1,img), 'c')
             self.infoText.config(state=tk.DISABLED)
 
             # Reset button styles (RAISED)
