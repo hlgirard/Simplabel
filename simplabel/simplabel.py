@@ -168,8 +168,22 @@ class ImageClassifier(tk.Frame):
         # Build list of images to classify
         self.image_list = []
 
-        alreadyLabeled = [d for d in os.listdir(self.folder) if (d in self.labeled) and (d.split('.')[-1] in self.supported_extensions)]
-        toLabel = [d for d in os.listdir(self.folder) if (d not in self.labeled) and (d.split('.')[-1] in self.supported_extensions)]
+        ## If the directory contains at least 1 image, process only this directory
+        list_image_files = [d for d in os.listdir(self.folder) if d.split('.')[-1] in self.supported_extensions]
+        if len(list_image_files) > 0:
+            alreadyLabeled = [d for d in list_image_files if d in self.labeled]
+            toLabel = [d for d in list_image_files if d not in self.labeled]
+        ## Otherwise, list and check subfolders
+        else:
+            alreadyLabeled = []
+            toLabel = []
+            sub_folder_list = [dirName for dirName in next(os.walk(self.folder))[1] if not dirName.startswith('.')]
+            for dirName in sub_folder_list:
+                dir_path = os.path.join(self.folder, dirName)
+                img_list = [d for d in os.listdir(dir_path) if d.split('.')[-1] in self.supported_extensions]
+                alreadyLabeled.extend([dirName + '/' + d for d in img_list if d in self.labeled])
+                toLabel.extend([dirName + '/' + d for d in img_list if d not in self.labeled])
+
 
         # Initialize counter at the numer of already labeled images
         self.counter = len(alreadyLabeled)
