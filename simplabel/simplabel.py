@@ -32,7 +32,7 @@ class ImageClassifier(tk.Frame):
         This dict is saved to disk by the 'Save' button
     """
 
-    def __init__(self, parent, directory, categories = None, verbose = 0, username = None, *args, **kwargs):
+    def __init__(self, parent, directory, categories = None, verbose = 0, username = None, reconcileMode = False, *args, **kwargs):
 
         # Initialize frame
         tk.Frame.__init__(self, parent, *args, **kwargs)
@@ -60,30 +60,11 @@ class ImageClassifier(tk.Frame):
         self.imwidth = self.winwidth - 10
         self.imheight = int(self.imwidth // 1.5)
 
-        # Set the username for the current session
-        if isinstance(username, str):
-            self.username = username.strip().lower()
-            logging.info("Username: {}".format(self.username))
-        else:
-            self.username = "guest"
-            logging.info("No username passed, saving as guest")
-
-        # Choose a color for the user
-        random.seed(a = self.username)
-        self.userColor = random.choice(self.colors)
-
         #  Directory containing the raw images
         self.folder = directory
 
-        # Directory containing the saved labeled dictionary
-        ## Note: username will be "guest" if none was passed as command line argument
-        self.savepath = self.folder + "/labeled_" + self.username +".pkl"
-            
         # Directory containing the labels
         self.labelpath = self.folder + "/labels.pkl"
-
-        # Initialize state variables
-        self.saved = True
 
         # Make a frame for global control buttons (at the top of the window)
         self.frame0 = tk.Frame(self.root, width=self.winwidth, height=24, bd=2)
@@ -106,6 +87,43 @@ class ImageClassifier(tk.Frame):
         tk.Button(self.root, text='Reset', height=2, width=8, command =self.reset_session).pack(in_=self.frame0, side = tk.RIGHT)
         tk.Button(self.root, text='DELETE ALL', height=2, width=10, command =self.delete_saved_data).pack(in_=self.frame0, side = tk.RIGHT)
 
+        # Create the key bindings
+        self.root.bind("<Key>", self.keypress_handler)
+        self.root.bind("<Left>", self.previous_image)
+        self.root.bind("<Right>", self.next_image)
+
+        # Reconcile mode state parameter
+        self.reconcileMode = reconcileMode
+        if reconcileMode:
+            # Initialize reconcile mode
+            logging.info("Starting in reconcile mode")
+            self.initialize_reconcile_mode()
+        else:
+            # Initialize normal mode
+            logging.info("Starting in labelling mode")
+            self.initialize_normal_mode(directory, categories, username)
+
+
+    def initialize_normal_mode(self, directory, categories, username):
+        # Set the username for the current session
+        if isinstance(username, str):
+            self.username = username.strip().lower()
+            logging.info("Username: {}".format(self.username))
+        else:
+            self.username = "guest"
+            logging.info("No username passed, saving as guest")
+
+        # Choose a color for the user
+        self.userColor = self.user_color_helper(self.username)
+
+        # Directory containing the saved labeled dictionary
+        ## Note: username will be "guest" if none was passed as command line argument
+        self.savepath = self.folder + "/labeled_" + self.username +".pkl"
+
+        # Initialize state variables
+        self.saved = True
+
+        # Create the user action buttons
         self.saveButton = tk.Button(self.root, text='Save', height=2, width=8, command =self.save)
         self.saveButton.pack(in_=self.frame0, side = tk.LEFT)
         self.prevButton = tk.Button(self.root, text='Previous', height=2, width=8, command =self.previous_image)
@@ -122,15 +140,9 @@ class ImageClassifier(tk.Frame):
         self.infoText.tag_config("r", foreground="#8B0000")
         self.infoText.tag_config("userColor", foreground=self.userColor)
         # Print the name of the current user 
-        # TODO: in reconcile mode this should show user colors
         self.infoText.insert('2.0', "\nUser:", 'c')
         self.infoText.insert(tk.END, " {}".format(self.username), ('c', 'userColor'))
         self.infoText.config(state=tk.DISABLED)
-
-        # Create the key bindings
-        self.root.bind("<Key>", self.keypress_handler)
-        self.root.bind("<Left>", self.previous_image)
-        self.root.bind("<Right>", self.next_image)
 
         # Categories for the labelling task
         self.labels_from_file = False
@@ -149,6 +161,23 @@ class ImageClassifier(tk.Frame):
         
         # Display the first image
         self.display_image()
+
+    def initialize_reconcile_mode(self, directory):
+        # Find all usernames associated with saved files
+        self.users = [f.split('_')[1].split('.')[0] for f in os.listdir(self.folder) if (f.endswith('.pkl') and f.startswith('labeled_'))]
+
+        # Create a dictionary associating each username with it's color
+        self.userColors = {user: self.user_color_helper(user) for user in self.users}
+
+        # TODO: 
+        # - load labeled dictionaries for each user
+        # - load categories from these dictionaries
+        # - Create user action buttons
+        # - Create textbox
+        # - Print user names in color
+        # - Load images from directory
+        # - Sort images: agree, disagree, unlabeled
+        # - Create category buttons
 
     def initialize_labels(self):
         '''Loads labels from file if it exists or use labels passed as argument (these override any file defined labels).'''
@@ -358,6 +387,10 @@ class ImageClassifier(tk.Frame):
         with open(file, 'wb') as f:
             pickle.dump(dict, f)
 
+    def user_color_helper(self, username):
+        random.seed(a = username)
+        return random.choice(self.colors)
+
     def reset_session(self):
         '''Deletes all labels from the current session and reload the images'''
         result = askquestion('Are you sure?', 'Delete data since last save?', icon = 'warning')
@@ -371,7 +404,7 @@ class ImageClassifier(tk.Frame):
     
     def delete_saved_data(self):
         '''Deletes all labels from session and saved data then closes the app'''
-        result = askquestion('Are you sure?', 'This action will delete all saved and session data and quit the app. Continue?', icon = 'warning')
+        result = askquestion('Are you sure?', 'This action will delete all saved and session data for this user and quit the app. Continue?', icon = 'warning')
         if result == 'yes':
             logging.warning("Deleting all saved data and exiting")
             if os.path.isfile(self.savepath):
