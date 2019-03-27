@@ -260,25 +260,44 @@ class ImageClassifier(tk.Frame):
         ## If the directory contains at least 1 image, process only this directory
         list_image_files = [d for d in os.listdir(self.folder) if d.split('.')[-1] in self.supported_extensions]
         if len(list_image_files) > 0:
-            alreadyLabeled = [d for d in list_image_files if d in self.labeled]
-            toLabel = [d for d in list_image_files if d not in self.labeled]
+            labeledByCurrentUser = []
+            labeledByOtherUser = []
+            toLabel = []
+            for img in list_image_files:
+                if img in self.labeled:
+                    labeledByCurrentUser.append(img)
+                elif img in self.masterLabeled:
+                    labeledByOtherUser.append(img)
+                else:
+                    toLabel.append(img)
         ## Otherwise, list and check subdirectories
         else:
             logging.info("No image files in main directory, searching sub-directories...")
-            alreadyLabeled = []
+            labeledByCurrentUser = []
+            labeledByOtherUser = []
             toLabel = []
             sub_folder_list = [dirName for dirName in next(os.walk(self.folder))[1] if not dirName.startswith('.')]
             for dirName in sub_folder_list:
                 dir_path = os.path.join(self.folder, dirName)
-                img_list = [d for d in os.listdir(dir_path) if d.split('.')[-1] in self.supported_extensions]
-                alreadyLabeled.extend([dirName + '/' + d for d in img_list if (dirName + '/' + d) in self.labeled])
-                toLabel.extend([dirName + '/' + d for d in img_list if (dirName + '/' + d) not in self.labeled])
+                list_image_files = [d for d in os.listdir(dir_path) if d.split('.')[-1] in self.supported_extensions]
+                for img in list_image_files:
+                    imgPath = dirName + '/' + img
+                    if imgPath in self.labeled:
+                        labeledByCurrentUser.append(imgPath)
+                    elif imgPath in self.masterLabeled:
+                        labeledByOtherUser.append(imgPath)
+                    else:
+                        toLabel.append(imgPath)
 
+        # Images that are already labeled are concatenated with the ones labeled by the current user last to enable them to review their own labelling
+        alreadyLabeled = labeledByOtherUser + labeledByCurrentUser
 
         # Initialize counter at the numer of already labeled images
         self.counter = len(alreadyLabeled)
 
-        # Add already labeled images first
+        # Add already labeled images first, images to label are shuffled 
+        random.seed() # Reset the random seed
+        random.shuffle(toLabel) # Shuffle the list in place
         self.image_list = alreadyLabeled + toLabel
 
         # Check that there is at least one image
@@ -343,7 +362,7 @@ class ImageClassifier(tk.Frame):
     def goto_next_unlabeled(self):
         '''Displays the unlabeled image with the smallest index number'''
         for idx, img in enumerate(self.image_list):
-            if img not in self.labeled:
+            if img not in self.labeled and img not in self.masterLabeled:
                 self.counter = idx
                 self.display_image()
                 break
