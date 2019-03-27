@@ -94,6 +94,7 @@ class ImageClassifier(tk.Frame):
 
         # Find all labelers (other users)
         self.users = [f.split('_')[1].split('.')[0] for f in os.listdir(self.folder) if (f.endswith('.pkl') and f.startswith('labeled_'))]
+        logging.info("Existing users: {}".format(self.users))
 
         # Assign a color for each user
         # TODO: Rewrite to ensure each user has a separate color if possible
@@ -114,7 +115,8 @@ class ImageClassifier(tk.Frame):
     def initialize_normal_mode(self, directory, categories, username):
         # Set the username for the current session
         if isinstance(username, str):
-            self.username = username.strip().lower()
+            # Lowercase and remove spaces to minimize 
+            self.username = ''.join(username.strip().lower().split())
             logging.info("Username: {}".format(self.username))
         else:
             # TODO: Rewrite to use hostname / system username if no username is passed
@@ -157,7 +159,7 @@ class ImageClassifier(tk.Frame):
             self.infoText.tag_config("{}Color".format(user), foreground=color)
 
         ## Print the name of the current user 
-        self.infoText.insert('2.0', "\nUsers: ", 'c')
+        self.infoText.insert('2.0', "\nLabelers: ", 'c')
         self.infoText.insert(tk.END, "{}".format(self.username), ('c', '{}Color'.format(self.username), 'u'))
 
         ## Print the names of other labelers
@@ -166,6 +168,7 @@ class ImageClassifier(tk.Frame):
                 self.infoText.insert(tk.END, ", ", ('c',))
                 self.infoText.insert(tk.END, "{}".format(user), ('c', '{}Color'.format(user)))
 
+        ## Disable the textbox
         self.infoText.config(state=tk.DISABLED)
 
         # Categories for the labelling task
@@ -222,7 +225,7 @@ class ImageClassifier(tk.Frame):
 
     def initialize_data(self):
         '''Loads existing data from disk if it exists and loads a list of unlabelled images found in the directory'''
-        # Initialize dictionary
+        # Initialize current user's dictionary (Note: it might not exist yet)
         if os.path.isfile(self.savepath):
             self.labeled = self.load_dict(self.savepath)
             logging.info("Loaded existing dictionary from disk")
@@ -235,6 +238,25 @@ class ImageClassifier(tk.Frame):
         else:
             self.labeled = {}
             logging.info("No dictionary found, initializing a new one")
+
+        # Load other users dictionaries and initialize a master dictionary
+        # TODO: refactor this section as update_master_labeled(self) to be able to run it regularly
+        self.masterLabeled = {}
+        for user in self.users:
+            # Current user is treated separately because dict is already loaded and might not exist on disk
+            if user == self.username:
+                for (imageName, label) in self.labeled.items():
+                    self.masterLabeled[imageName] = [(user, label)]
+            # For other users, load their dict and dump data into the masterLabeled dictionary
+            else:
+                dictPath = self.folder + "/labeled_" + user +".pkl"
+                userDict = self.load_dict(dictPath)
+                for (imageName, label) in userDict.items():
+                    if imageName in self.masterLabeled:
+                        self.masterLabeled[imageName].append((user, label))
+                    else:
+                        self.masterLabeled[imageName] = [(user, label)]
+
 
         # All checks for label consistency are over, save labels to file if they were passed as arguments
         if not self.labels_from_file:
@@ -273,7 +295,7 @@ class ImageClassifier(tk.Frame):
             logging.warning("No images found in directory.")
             self.errorClose()
         else:
-            logging.info("Found {} images in the directory: {}".format(len(self.image_list), self.folder))
+            logging.info("Found {} images under the directory: {}".format(len(self.image_list), self.folder))
             logging.info("{} images left to label".format(len(self.image_list)-self.counter))
 
         # Get number of images   
