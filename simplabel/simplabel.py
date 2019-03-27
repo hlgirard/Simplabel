@@ -24,6 +24,10 @@ class ImageClassifier(tk.Frame):
         Disting categories to use for labelling
     verbose : int
         Logging level, 0: WARNING, 1: INFO, 2: DEBUG
+    username : str
+        Username to be used for multi-user mode
+    autoRefresh : int
+        Interval in seconds between auto-save and auto-refresh of master dict actions (0 to disable)
 
     Notable attributes
     -------
@@ -32,7 +36,7 @@ class ImageClassifier(tk.Frame):
         This dict is saved to disk by the 'Save' button
     """
 
-    def __init__(self, parent, directory, categories = None, verbose = 0, username = None, reconcileMode = False, *args, **kwargs):
+    def __init__(self, parent, directory, categories = None, verbose = 0, username = None, reconcileMode = False, autoRefresh = 60, *args, **kwargs):
 
         # Initialize frame
         tk.Frame.__init__(self, parent, *args, **kwargs)
@@ -65,6 +69,12 @@ class ImageClassifier(tk.Frame):
 
         # Directory containing the labels
         self.labelpath = self.folder + "/labels.pkl"
+
+        # Initialize a refresh timestamp and refresh interval for auto-save and auto-refresh master dict
+        self.saveTimestamp = time.time()
+        self.saveInterval = autoRefresh
+        self.refreshTimestamp = time.time()
+        self.refreshInterval = autoRefresh
 
         # Make a frame for global control buttons (at the top of the window)
         self.frame0 = tk.Frame(self.root, width=self.winwidth, height=24, bd=2)
@@ -320,7 +330,17 @@ class ImageClassifier(tk.Frame):
             logging.info('Label {} selected for image {}'.format(category, self.image_list[self.counter]))
             if self.saved: # Reset saved status
                 self.saved = False
-            self.next_image()
+            
+            # If it is time to refresh the master, do that
+            # Note: after the refresh, the counter will be at the next unlabeled position
+            if self.refreshInterval != 0 and (time.time() - self.refreshTimestamp > self.refreshInterval):
+                logging.debug("classify - Triggered auto-refresh")
+                self.refreshTimestamp = time.time()
+                self.refresh_master()
+                self.display_image()
+            else:
+                self.next_image()
+            
     
     def update_master_dict(self):
         '''Loads the labeling data from all detected users into a master dictionary.
@@ -342,6 +362,30 @@ class ImageClassifier(tk.Frame):
                         self.masterLabeled[imageName].append((user, label))
                     else:
                         self.masterLabeled[imageName] = [(user, label)]
+
+    def refresh_master(self):
+        '''Updates the master dictionary and refreshes the img_list accordingly. Does not re-explore the directory.'''
+
+        # Update the master dict by refreshing it
+        self.update_master_dict()
+
+        # Rebuild the image_list
+        labeledByCurrentUser = []
+        labeledByOtherUser = []
+        toLabel = []
+        for img in self.image_list:
+            if img in self.labeled:
+                labeledByCurrentUser.append(img)
+            elif img in self.masterLabeled:
+                labeledByOtherUser.append(img)
+            else:
+                toLabel.append(img)
+        
+        alreadyLabeled = labeledByOtherUser + labeledByCurrentUser
+        self.counter = len(alreadyLabeled)
+        self.image_list =  alreadyLabeled + toLabel
+
+        
 
     def previous_image(self, *args):
         '''Displays the previous image'''
@@ -447,6 +491,13 @@ class ImageClassifier(tk.Frame):
                 self.nextButton.config(state = tk.DISABLED)
             else:
                 self.nextButton.config(state = tk.NORMAL)
+
+            # Auto-save and auto-refresh
+            if self.saveInterval != 0 and (time.time() - self.saveTimestamp) > self.saveInterval:
+                logging.debug("display_image - Auto-save triggered")
+                self.saveTimestamp = time.time()
+                self.save()
+
 
     def keypress_handler(self,e):
         try:
