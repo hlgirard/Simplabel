@@ -129,10 +129,11 @@ class ImageClassifier(tk.Frame):
             self.username = "guest"
             logging.info("No username passed, saving as guest")
 
-        # Choose a color for the user
+        # Choose a color for the user and make sure user is in self.users
         if self.username in self.users:
             self.userColor = self.userColors[self.username]
         else:
+            self.users.append(self.username)
             self.userColor = self.user_color_helper(self.username)
             self.userColors[self.username] = self.userColor
 
@@ -245,24 +246,8 @@ class ImageClassifier(tk.Frame):
             self.labeled = {}
             logging.info("No dictionary found, initializing a new one")
 
-        # Load other users dictionaries and initialize a master dictionary
-        # TODO: refactor this section as update_master_labeled(self) to be able to run it regularly
-        self.masterLabeled = {}
-        for user in self.users:
-            # Current user is treated separately because dict is already loaded and might not exist on disk
-            if user == self.username:
-                for (imageName, label) in self.labeled.items():
-                    self.masterLabeled[imageName] = [(user, label)]
-            # For other users, load their dict and dump data into the masterLabeled dictionary
-            else:
-                dictPath = self.folder + "/labeled_" + user +".pkl"
-                userDict = self.load_dict(dictPath)
-                for (imageName, label) in userDict.items():
-                    if imageName in self.masterLabeled:
-                        self.masterLabeled[imageName].append((user, label))
-                    else:
-                        self.masterLabeled[imageName] = [(user, label)]
-
+        # Load data from all users
+        self.update_master_dict()
 
         # All checks for label consistency are over, save labels to file if they were passed as arguments
         if not self.labels_from_file:
@@ -318,6 +303,27 @@ class ImageClassifier(tk.Frame):
                 self.saved = False
             self.next_image()
     
+    def update_master_dict(self):
+        '''Loads the labeling data from all detected users into a master dictionary.
+
+        self.masterLabeled: {picName: [(user, label)]}
+        '''
+        self.masterLabeled = {}
+        for user in self.users:
+            # Current user is treated separately because dict is already loaded and might not exist on disk
+            if user == self.username:
+                for (imageName, label) in self.labeled.items():
+                    self.masterLabeled[imageName] = [(user, label)]
+            # For other users, load their dict and dump data into the masterLabeled dictionary
+            else:
+                dictPath = self.folder + "/labeled_" + user +".pkl"
+                userDict = self.load_dict(dictPath)
+                for (imageName, label) in userDict.items():
+                    if imageName in self.masterLabeled:
+                        self.masterLabeled[imageName].append((user, label))
+                    else:
+                        self.masterLabeled[imageName] = [(user, label)]
+
     def previous_image(self, *args):
         '''Displays the previous image'''
         if self.counter > 0:
@@ -380,16 +386,36 @@ class ImageClassifier(tk.Frame):
             self.infoText.insert('1.0',"Image {}/{} - Filename: {}".format(self.counter+1,self.max_count+1,img), 'c')
             self.infoText.config(state=tk.DISABLED)
 
-            # Reset button styles (RAISED)
+            # Reset all button styles (colors and outline)
             self.saveButton.config(highlightbackground = self.buttonOrigColor)
             for i in range(len(self.catButton)):
                 self.catButton[i].config(highlightbackground = self.buttonOrigColor)
 
-            # Sink the currently associated label if it exists
-            if img in self.labeled:
-                cat = self.labeled[img]
-                idxCat = self.categories.index(cat)
-                self.catButton[idxCat].config(highlightbackground='#3E4149')
+            # Display the associated label(s) from any user as colored background for the label button
+            if img in self.masterLabeled:
+                labelDict = {}
+                for (user, label) in self.masterLabeled[img]:
+                    if label in labelDict:
+                        labelDict[label].append(self.userColors[user])
+                    else:
+                        labelDict[label] = [self.userColors[user]]
+                # The img might be in self.labeled but not yet in self.masterLabeled (between updates of masterDict)
+                if img in self.labeled:
+                    label = self.labeled[img]
+                    if label in labelDict and self.userColor not in labelDict[label]:
+                        labelDict[label].append(self.userColor)
+                    else:
+                        labelDict[label] = [self.userColor]
+                for label in labelDict:
+                    idxLabel = self.categories.index(label)
+                    if len(labelDict[label]) == 1:
+                        self.catButton[idxLabel].config(highlightbackground=labelDict[label][0])
+                    else:
+                        self.catButton[idxLabel].config(highlightbackground='#3E4149')
+            elif img in self.labeled:
+                label = self.labeled[img]
+                idxLabel = self.categories.index(label)
+                self.catButton[idxLabel].config(highlightbackground=self.userColor)
 
             # Disable back button if on first image
             if self.counter == 0:
