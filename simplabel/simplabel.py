@@ -115,8 +115,14 @@ class ImageClassifier(tk.Frame):
     def initialize_normal_mode(self, directory, categories, username):
         # Set the username for the current session
         if isinstance(username, str):
-            # Lowercase and remove spaces to minimize 
-            self.username = ''.join(username.strip().lower().split())
+            # Sanitize: lowercase and remove spaces
+            sanName = ''.join(username.strip().lower().split())
+            # Check that username is not reserved
+            if sanName == 'master':
+                logging.error("Username 'master' is reserved.")
+                newName = input("Please choose another name: ")
+                sanName = ''.join(newName.strip().lower().split())
+            self.username = sanName
             logging.info("Username: {}".format(self.username))
         else:
             # TODO: Rewrite to use hostname / system username if no username is passed
