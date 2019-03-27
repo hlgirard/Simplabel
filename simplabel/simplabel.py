@@ -352,7 +352,10 @@ class ImageClassifier(tk.Frame):
             # Current user is treated separately because dict is already loaded and might not exist on disk
             if user == self.username:
                 for (imageName, label) in self.labeled.items():
-                    self.masterLabeled[imageName] = [(user, label)]
+                    if imageName in self.masterLabeled:
+                        self.masterLabeled[imageName].append((user, label))
+                    else:
+                        self.masterLabeled[imageName] = [(user, label)]
             # For other users, load their dict and dump data into the masterLabeled dictionary
             else:
                 dictPath = self.folder + "/labeled_" + user +".pkl"
@@ -511,6 +514,17 @@ class ImageClassifier(tk.Frame):
                 self.exit()
             elif e.char == 'r':
                 self.reset_session()
+            elif e.char == 'd': # FIXME: debug option only
+                print("masterLabeled Dict entry:")
+                if self.image_list[self.counter] in self.masterLabeled:
+                    print(self.masterLabeled[self.image_list[self.counter]])
+                else:
+                    print("Not found")
+                print("labeled Dict entry:")
+                if self.image_list[self.counter] in self.labeled:
+                    print(self.labeled[self.image_list[self.counter]])
+                else:
+                    print("Not found")
             else:
                 pass
     
