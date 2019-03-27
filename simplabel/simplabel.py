@@ -92,6 +92,13 @@ class ImageClassifier(tk.Frame):
         self.root.bind("<Left>", self.previous_image)
         self.root.bind("<Right>", self.next_image)
 
+        # Find all labelers (other users)
+        self.users = [f.split('_')[1].split('.')[0] for f in os.listdir(self.folder) if (f.endswith('.pkl') and f.startswith('labeled_'))]
+
+        # Assign a color for each user
+        # TODO: Rewrite to ensure each user has a separate color if possible
+        self.userColors = {user: self.user_color_helper(user) for user in self.users}
+
         # Reconcile mode state parameter
         self.reconcileMode = reconcileMode
         if reconcileMode:
@@ -110,11 +117,16 @@ class ImageClassifier(tk.Frame):
             self.username = username.strip().lower()
             logging.info("Username: {}".format(self.username))
         else:
+            # TODO: Rewrite to use hostname / system username if no username is passed
             self.username = "guest"
             logging.info("No username passed, saving as guest")
 
         # Choose a color for the user
-        self.userColor = self.user_color_helper(self.username)
+        if self.username in self.users:
+            self.userColor = self.userColors[self.username]
+        else:
+            self.userColor = self.user_color_helper(self.username)
+            self.userColors[self.username] = self.userColor
 
         # Directory containing the saved labeled dictionary
         ## Note: username will be "guest" if none was passed as command line argument
@@ -138,10 +150,22 @@ class ImageClassifier(tk.Frame):
         self.infoText.pack(in_=self.frame0)
         self.infoText.tag_config("c", justify=tk.CENTER)
         self.infoText.tag_config("r", foreground="#8B0000")
-        self.infoText.tag_config("userColor", foreground=self.userColor)
-        # Print the name of the current user 
-        self.infoText.insert('2.0', "\nUser:", 'c')
-        self.infoText.insert(tk.END, " {}".format(self.username), ('c', 'userColor'))
+        self.infoText.tag_config("u", underline=1, foreground = self.userColor)
+
+        ## Create user color tags
+        for (user, color) in self.userColors.items():
+            self.infoText.tag_config("{}Color".format(user), foreground=color)
+
+        ## Print the name of the current user 
+        self.infoText.insert('2.0', "\nUsers: ", 'c')
+        self.infoText.insert(tk.END, "{}".format(self.username), ('c', '{}Color'.format(self.username), 'u'))
+
+        ## Print the names of other labelers
+        for user in self.users:
+            if user != self.username:
+                self.infoText.insert(tk.END, ", ", ('c',))
+                self.infoText.insert(tk.END, "{}".format(user), ('c', '{}Color'.format(user)))
+
         self.infoText.config(state=tk.DISABLED)
 
         # Categories for the labelling task
@@ -163,11 +187,7 @@ class ImageClassifier(tk.Frame):
         self.display_image()
 
     def initialize_reconcile_mode(self, directory):
-        # Find all usernames associated with saved files
-        self.users = [f.split('_')[1].split('.')[0] for f in os.listdir(self.folder) if (f.endswith('.pkl') and f.startswith('labeled_'))]
-
-        # Create a dictionary associating each username with it's color
-        self.userColors = {user: self.user_color_helper(user) for user in self.users}
+        pass
 
         # TODO: 
         # - load labeled dictionaries for each user
