@@ -32,11 +32,11 @@ class ImageClassifier(tk.Frame):
     Notable attributes
     -------
     labelled : dict(string: string)
-        Dictionary containing the labels in the form {'image_name.jpg': label}
+        Dictionary containing the labels in the form {'relative/path/image_name.jpg': label}
         This dict is saved to disk by the 'Save' button
     """
 
-    def __init__(self, parent, directory, categories = None, verbose = 0, username = None, reconcileMode = False, autoRefresh = 60, *args, **kwargs):
+    def __init__(self, parent, directory, categories = None, verbose = 0, username = None, autoRefresh = 60, bResetLock = False, *args, **kwargs):
 
         # Initialize frame
         tk.Frame.__init__(self, parent, *args, **kwargs)
@@ -52,6 +52,7 @@ class ImageClassifier(tk.Frame):
 
         self.root = parent
         self.root.wm_title("Simplabel")
+        self.root.protocol('WM_DELETE_WINDOW', self.exit)
 
         # Supported image file formats (all extensions supported by PIL should work)
         self.supported_extensions = ['jpg','JPG','png','gif','JPEG','eps','bmp','tiff']
@@ -70,12 +71,68 @@ class ImageClassifier(tk.Frame):
         # Directory containing the labels
         self.labelpath = self.folder + "/labels.pkl"
 
+        # Initialize state variables
+        self.saved = True
+
         # Initialize a refresh timestamp and refresh interval for auto-save and auto-refresh master dict
         self.saveTimestamp = time.time()
         self.saveInterval = autoRefresh
         self.refreshTimestamp = time.time()
         self.refreshInterval = autoRefresh
 
+        # Find all labelers (other users)
+        self.users = [f.split('_')[1].split('.')[0] for f in os.listdir(self.folder) if (f.endswith('.pkl') and f.startswith('labeled_'))]
+        logging.info("Existing users: {}".format(self.users))
+
+        # Assign a color for each user
+        # TODO: Rewrite to ensure each user has a separate color if possible
+        self.userColors = {user: self.user_color_helper(user) for user in self.users}
+
+        # Set the username for the current session
+        if isinstance(username, str):
+            # Sanitize: lowercase and remove spaces
+            sanName = ''.join(username.strip().lower().split())
+            # Check that username is not reserved
+            if sanName == 'master':
+                logging.error("Username 'master' is reserved.")
+                newName = input("Please choose another name: ")
+                sanName = ''.join(newName.strip().lower().split())
+            self.username = sanName
+            logging.info("Username: {}".format(self.username))
+        else:
+            # TODO: Rewrite to use hostname / system username if no username is passed
+            self.username = "guest"
+            logging.info("No username passed, saving as guest")
+
+        # Choose a color for the user and make sure user is in self.users
+        if self.username in self.users:
+            self.userColor = self.userColors[self.username]
+        else:
+            self.users.append(self.username)
+            self.userColor = self.user_color_helper(self.username)
+            self.userColors[self.username] = self.userColor
+
+        # Initialize and check lock
+        self.gotLock = False
+        self.lock = FsLock(self.folder, self.username)
+        try:
+            self.lock.acquire()
+        except:
+            if bResetLock:
+                logging.warning("Overriding the lock, this should only be used if you are certain no other user is using the same username.")
+                self.lock.release()
+                self.lock.acquire()
+            else:
+                logging.warning("The app is already in use with this username. Please choose another username and restart.")
+                logging.warning("If you are certain that is not the case, restart the app with the flag --reset-lock")
+                self.errorClose()
+            
+        self.gotLock = True
+        
+        # Directory containing the saved labeled dictionary
+        ## Note: username will be "guest" if none was passed as command line argument
+        self.savepath = self.folder + "/labeled_" + self.username +".pkl"
+        
         # Make a frame for global control buttons (at the top of the window)
         self.frame0 = tk.Frame(self.root, width=self.winwidth, height=24, bd=2)
         self.frame0.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
@@ -101,58 +158,6 @@ class ImageClassifier(tk.Frame):
         self.root.bind("<Key>", self.keypress_handler)
         self.root.bind("<Left>", self.previous_image)
         self.root.bind("<Right>", self.next_image)
-
-        # Find all labelers (other users)
-        self.users = [f.split('_')[1].split('.')[0] for f in os.listdir(self.folder) if (f.endswith('.pkl') and f.startswith('labeled_'))]
-        logging.info("Existing users: {}".format(self.users))
-
-        # Assign a color for each user
-        # TODO: Rewrite to ensure each user has a separate color if possible
-        self.userColors = {user: self.user_color_helper(user) for user in self.users}
-
-        # Reconcile mode state parameter
-        self.reconcileMode = reconcileMode
-        if reconcileMode:
-            # Initialize reconcile mode
-            logging.info("Starting in reconcile mode")
-            self.initialize_reconcile_mode()
-        else:
-            # Initialize normal mode
-            logging.info("Starting in labelling mode")
-            self.initialize_normal_mode(directory, categories, username)
-
-
-    def initialize_normal_mode(self, directory, categories, username):
-        # Set the username for the current session
-        if isinstance(username, str):
-            # Sanitize: lowercase and remove spaces
-            sanName = ''.join(username.strip().lower().split())
-            # Check that username is not reserved
-            if sanName == 'master':
-                logging.error("Username 'master' is reserved.")
-                newName = input("Please choose another name: ")
-                sanName = ''.join(newName.strip().lower().split())
-            self.username = sanName
-            logging.info("Username: {}".format(self.username))
-        else:
-            # TODO: Rewrite to use hostname / system username if no username is passed
-            self.username = "guest"
-            logging.info("No username passed, saving as guest")
-
-        # Choose a color for the user and make sure user is in self.users
-        if self.username in self.users:
-            self.userColor = self.userColors[self.username]
-        else:
-            self.users.append(self.username)
-            self.userColor = self.user_color_helper(self.username)
-            self.userColors[self.username] = self.userColor
-
-        # Directory containing the saved labeled dictionary
-        ## Note: username will be "guest" if none was passed as command line argument
-        self.savepath = self.folder + "/labeled_" + self.username +".pkl"
-
-        # Initialize state variables
-        self.saved = True
 
         # Create the user action buttons
         self.saveButton = tk.Button(self.root, text='Save', height=2, width=8, command =self.save)
@@ -205,19 +210,6 @@ class ImageClassifier(tk.Frame):
         
         # Display the first image
         self.display_image()
-
-    def initialize_reconcile_mode(self, directory):
-        pass
-
-        # TODO: 
-        # - load labeled dictionaries for each user
-        # - load categories from these dictionaries
-        # - Create user action buttons
-        # - Create textbox
-        # - Print user names in color
-        # - Load images from directory
-        # - Sort images: agree, disagree, unlabeled
-        # - Create category buttons
 
     def initialize_labels(self):
         '''Loads labels from file if it exists or use labels passed as argument (these override any file defined labels).'''
@@ -388,7 +380,7 @@ class ImageClassifier(tk.Frame):
         self.counter = len(alreadyLabeled)
         self.image_list =  alreadyLabeled + toLabel
 
-        
+    
 
     def previous_image(self, *args):
         '''Displays the previous image'''
@@ -575,17 +567,60 @@ class ImageClassifier(tk.Frame):
 
     def exit(self):
         '''Cleanly exits the app'''
+        logging.debug("Executing clean exit actions...")
+
+        # Show the save dialog
         if not self.saved:
             result = askquestion('Save?', 'Do you want to save this session before leaving?', icon = 'warning')
             if result == 'yes':
                 self.save()
+
+        # Release the lock if the app obtained it
+        if self.gotLock:
+            self.lock.release()
+
+        # Close the app cleanly
         self.quit()
 
     def errorClose(self):
         '''Closes the window when the app encouters an error it cannot recover from'''
-        logging.info("Closing the app...")
+        logging.debug("Executing error exit actions...")
+
+        # Release the lock if the app obtained it
+        if self.gotLock:
+            self.lock.release()
+    
+        # Destroy the window and exit
         self.master.destroy()
         sys.exit()
+
+
+class FsLock(object):
+    '''
+    A simple filesystem based lock mechanism to avoid multiple users logging in with the same username at once.
+    '''
+    def __init__(self, directory, username):
+        self.filename = directory + '/.' + username + '_lock.txt'
+
+        # If the lock file does not exist, create it now
+        if not os.path.exists(self.filename):
+            with open(self.filename, 'w') as f:
+                f.write('unlocked')
+
+    def acquire(self):
+        if self.is_locked():
+            raise Exception("Lock is already acquired.")     
+        else:
+            with open(self.filename, 'w') as f:
+                f.write('locked')
+            
+    def release(self):
+        with open(self.filename, 'w') as f:
+            f.write('unlocked')
+
+    def is_locked(self):
+        return open(self.filename, 'r').read() == 'locked'
+
 
 if __name__ == "__main__":
     root = tk.Tk() 

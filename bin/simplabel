@@ -15,6 +15,8 @@ ap.add_argument("-v", "--verbose", action='store_true', help="Enable verbose mod
 ap.add_argument("-u", "--user", help="Set username for the current session")
 ap.add_argument("-r", "--reconcile", action='store_true', help="Reconcile selections from different users where the labels are different")
 ap.add_argument("--reset", action='store_true', help="Deletes any existing data and starts a new labelling task")
+ap.add_argument("--reset-lock", action='store_true', help="Overrides the lock in case of incorrect lockout")
+
 
 args = ap.parse_args()
 
@@ -24,6 +26,7 @@ categories = args.categories
 verbosity = 1 if args.verbose else 0
 username = args.user
 bReconcile = args.reconcile
+bResetLock = args.reset_lock
 
 # Reset all saved data if requested
 if args.reset:
@@ -40,5 +43,5 @@ if args.reset:
 
 # Launch the app
 root = tk.Tk() 
-MyApp = simplabel.ImageClassifier(root, rawDirectory, categories, verbosity, username, bReconcile)
+MyApp = simplabel.ImageClassifier(root, rawDirectory, categories = categories, verbose = verbosity, username = username, bResetLock = bResetLock)
 tk.mainloop()
