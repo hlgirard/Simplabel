@@ -81,7 +81,7 @@ class ImageClassifier(tk.Frame):
         self.refreshInterval = autoRefresh
 
         # Find all labelers (other users)
-        self.users = [f.split('_')[1].split('.')[0] for f in os.listdir(self.folder) if (f.endswith('.pkl') and f.startswith('labeled_'))]
+        self.users = self.get_all_users()
         logging.info("Existing users: {}".format(self.users))
 
         # Assign a color for each user
@@ -180,18 +180,8 @@ class ImageClassifier(tk.Frame):
         for (user, color) in self.userColors.items():
             self.infoText.tag_config("{}Color".format(user), foreground=color)
 
-        ## Print the name of the current user 
-        self.infoText.insert('2.0', "\nLabelers: ", 'c')
-        self.infoText.insert(tk.END, "{}".format(self.username), ('c', '{}Color'.format(self.username), 'u'))
-
-        ## Print the names of other labelers
-        for user in self.users:
-            if user != self.username:
-                self.infoText.insert(tk.END, ", ", ('c',))
-                self.infoText.insert(tk.END, "{}".format(user), ('c', '{}Color'.format(user)))
-
-        ## Disable the textbox
-        self.infoText.config(state=tk.DISABLED)
+        ## Display all labelers' names
+        self.update_users_displayed()
 
         # Categories for the labelling task
         self.labels_from_file = False
@@ -333,6 +323,9 @@ class ImageClassifier(tk.Frame):
             else:
                 self.next_image()
             
+    def get_all_users(self):
+        '''Returns a list of all users detected in the directory'''
+        return [f.split('_')[1].split('.')[0] for f in os.listdir(self.folder) if (f.endswith('.pkl') and f.startswith('labeled_'))]
     
     def update_master_dict(self):
         '''Loads the labeling data from all detected users into a master dictionary.
@@ -359,8 +352,16 @@ class ImageClassifier(tk.Frame):
                         self.masterLabeled[imageName] = [(user, label)]
 
     def refresh_master(self):
-        '''Updates the master dictionary and refreshes the img_list accordingly. Does not re-explore the directory.'''
+        '''Updates the list of users and master dictionary then refreshes the img_list accordingly. Does not re-explore the directory.'''
 
+        # Update the list of users
+        newUsers = self.get_all_users()
+        ## If new users are detected, update the names in the UI
+        if newUsers != self.users:
+            logging.debug("Updating the list of users")
+            self.users = newUsers
+            self.update_users_displayed()
+        
         # Update the master dict by refreshing it
         self.update_master_dict()
 
@@ -379,8 +380,6 @@ class ImageClassifier(tk.Frame):
         alreadyLabeled = labeledByOtherUser + labeledByCurrentUser
         self.counter = len(alreadyLabeled)
         self.image_list =  alreadyLabeled + toLabel
-
-    
 
     def previous_image(self, *args):
         '''Displays the previous image'''
@@ -520,6 +519,22 @@ class ImageClassifier(tk.Frame):
             else:
                 pass
     
+    def update_users_displayed(self):
+        ## Print the name of the current user 
+        self.infoText.config(state=tk.NORMAL)
+        self.infoText.delete('2.0', '2.end')
+        self.infoText.insert('2.0', "\nLabelers: ", 'c')
+        self.infoText.insert(tk.END, "{}".format(self.username), ('c', '{}Color'.format(self.username), 'u'))
+
+        ## Print the names of other labelers
+        for user in self.users:
+            if user != self.username:
+                self.infoText.insert(tk.END, ", ", ('c',))
+                self.infoText.insert(tk.END, "{}".format(user), ('c', '{}Color'.format(user)))
+
+        ## Disable the textbox
+        self.infoText.config(state=tk.DISABLED)
+
     def save(self):
         '''Save the labeled dictionary to disk'''
         self.dump_dict(self.labeled, self.savepath)
