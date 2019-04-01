@@ -123,7 +123,7 @@ class ImageClassifier(tk.Frame):
                 self.lock.release()
                 self.lock.acquire()
             else:
-                logging.warning("The app is already in use with this username. Please choose another username and restart.")
+                logging.warning("The app is already in use with this username ({}). Please choose another username and restart.".format(self.username))
                 logging.warning("If you are certain that is not the case, restart the app with the flag --reset-lock")
                 self.errorClose()
             
@@ -133,9 +133,13 @@ class ImageClassifier(tk.Frame):
         ## Note: username will be "guest" if none was passed as command line argument
         self.savepath = self.folder + "/labeled_" + self.username +".pkl"
         
-        # Make a frame for global control buttons (at the top of the window)
+        # Make a frame for navigation buttons (at the top of the window)
         self.frame0 = tk.Frame(self.root, width=self.winwidth, height=24, bd=2)
         self.frame0.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        # Make a frame for the user action buttons (below navigation)
+        #self.frame3 = tk.Frame(self.root, width=self.winwidth, height=24, bd=2)
+        #self.frame3.pack(fill=tk.BOTH, expand=True)
 
         # Make a frame to display the image
         self.frame1 = tk.Frame(self.root, width=self.winwidth, height=self.imheight+10, bd=2)
@@ -149,25 +153,32 @@ class ImageClassifier(tk.Frame):
         self.frame2 = tk.Frame(self.root, width=self.winwidth, height=10, bd=2)
         self.frame2.pack(side = tk.BOTTOM, fill=tk.BOTH, expand=True)
 
-        # Create the global buttons
-        tk.Button(self.root, text='Exit', height=2, width=8, command =self.exit).pack(in_=self.frame0, side = tk.RIGHT)
-        tk.Button(self.root, text='Reset', height=2, width=8, command =self.reset_session).pack(in_=self.frame0, side = tk.RIGHT)
-        tk.Button(self.root, text='DELETE ALL', height=2, width=10, command =self.delete_saved_data).pack(in_=self.frame0, side = tk.RIGHT)
 
         # Create the key bindings
         self.root.bind("<Key>", self.keypress_handler)
         self.root.bind("<Left>", self.previous_image)
         self.root.bind("<Right>", self.next_image)
 
+        # Create the navigation buttons
+        self.firstButton = tk.Button(self.root, text='|<<', height=2, width=3, command =self.goto_first_image)
+        self.firstButton.pack(in_=self.frame0, side = tk.LEFT)
+        self.prevButton = tk.Button(self.root, text='<', height=2, width=3, command =self.previous_image)
+        self.prevButton.pack(in_=self.frame0, side = tk.LEFT)
+        self.nextButton = tk.Button(self.root, text='>', height=2, width=3, command =self.next_image)
+        self.nextButton.pack(in_=self.frame0, side = tk.LEFT)
+        tk.Button(self.root, text='>?', height=2, width=3, wraplength=80, command =self.goto_next_unlabeled).pack(in_=self.frame0, side = tk.LEFT)
+        self.buttonOrigColor = self.firstButton.config()['highlightbackground'][-1]
+        self.lastButton = tk.Button(self.root, text='>>|', height=2, width=3, command =self.goto_last_image)
+        self.lastButton.pack(in_=self.frame0, side = tk.LEFT)
+
         # Create the user action buttons
         self.saveButton = tk.Button(self.root, text='Save', height=2, width=8, command =self.save)
         self.saveButton.pack(in_=self.frame0, side = tk.LEFT)
-        self.prevButton = tk.Button(self.root, text='Previous', height=2, width=8, command =self.previous_image)
-        self.prevButton.pack(in_=self.frame0, side = tk.LEFT)
-        self.nextButton = tk.Button(self.root, text='Next', height=2, width=8, command =self.next_image)
-        self.nextButton.pack(in_=self.frame0, side = tk.LEFT)
-        tk.Button(self.root, text='Next unlabeled', height=2, width=8, wraplength=80, command =self.goto_next_unlabeled).pack(in_=self.frame0, side = tk.LEFT)
-        self.buttonOrigColor = self.saveButton.config()['highlightbackground'][-1]
+        tk.Button(self.root, text='Exit', height=2, width=8, command =self.exit).pack(in_=self.frame0, side = tk.RIGHT)
+        self.masterButton = tk.Button(self.root, text='Make Master', height=2,  wraplength=80, width=8, command =self.make_master)
+        self.masterButton.pack(in_=self.frame0, side = tk.RIGHT)
+        self.reconcileButton = tk.Button(self.root, text='Reconcile', height=2, width=8, command =self.reconcile)
+        self.reconcileButton.pack(in_=self.frame0, side = tk.RIGHT)
 
         # Create a textbox for the current image information
         self.infoText = tk.Text(self.root, height=2, width=65, wrap=None)
@@ -318,7 +329,7 @@ class ImageClassifier(tk.Frame):
             if self.refreshInterval != 0 and (time.time() - self.refreshTimestamp > self.refreshInterval):
                 logging.debug("classify - Triggered auto-refresh")
                 self.refreshTimestamp = time.time()
-                self.refresh_master()
+                self.refresh_master_dict()
                 self.display_image()
             else:
                 self.next_image()
@@ -351,7 +362,7 @@ class ImageClassifier(tk.Frame):
                     else:
                         self.masterLabeled[imageName] = [(user, label)]
 
-    def refresh_master(self):
+    def refresh_master_dict(self):
         '''Updates the list of users and master dictionary then refreshes the img_list accordingly. Does not re-explore the directory.'''
 
         # Update the list of users
@@ -396,6 +407,16 @@ class ImageClassifier(tk.Frame):
             self.display_image()
         else:
             logging.info("No more images")
+
+    def goto_first_image(self, *args):
+        '''Display the first image of the list'''
+        self.counter = 0
+        self.display_image()
+
+    def goto_last_image(self, *args):
+        '''Display the last image of the list'''
+        self.counter = self.max_count
+        self.display_image()
 
     def goto_next_unlabeled(self):
         '''Displays the unlabeled image with the smallest index number'''
@@ -492,6 +513,11 @@ class ImageClassifier(tk.Frame):
                 self.saveTimestamp = time.time()
                 self.save()
 
+    def make_master(self):
+        pass
+
+    def reconcile(self):
+        pass
 
     def keypress_handler(self,e):
         try:
@@ -555,30 +581,6 @@ class ImageClassifier(tk.Frame):
     def user_color_helper(self, username):
         random.seed(a = username)
         return random.choice(self.colors)
-
-    def reset_session(self):
-        '''Deletes all labels from the current session and reload the images'''
-        result = askquestion('Are you sure?', 'Delete data since last save?', icon = 'warning')
-        if result == 'yes':
-            logging.warning("Resetting session since last save and reinitializing date")
-            self.labeled = {}
-            self.initialize_data()
-            self.display_image()
-        else:
-            pass
-    
-    def delete_saved_data(self):
-        '''Deletes all labels from session and saved data then closes the app'''
-        result = askquestion('Are you sure?', 'This action will delete all saved and session data for this user and quit the app. Continue?', icon = 'warning')
-        if result == 'yes':
-            logging.warning("Deleting all saved data and exiting")
-            if os.path.isfile(self.savepath):
-                os.remove(self.savepath)
-            if os.path.isfile(self.labelpath):
-                os.remove(self.labelpath)
-            self.errorClose()
-        else:
-            pass
 
     def exit(self):
         '''Cleanly exits the app'''
