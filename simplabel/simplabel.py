@@ -73,6 +73,7 @@ class ImageClassifier(tk.Frame):
 
         # Initialize state variables
         self.saved = True
+        self.reconcileMode = False
 
         # Initialize a refresh timestamp and refresh interval for auto-save and auto-refresh master dict
         self.saveTimestamp = time.time()
@@ -324,9 +325,9 @@ class ImageClassifier(tk.Frame):
             if self.saved: # Reset saved status
                 self.saved = False
             
-            # If it is time to refresh the master, do that
+            # If it is time to refresh the master and not in reconcile mode, do that
             # Note: after the refresh, the counter will be at the next unlabeled position
-            if self.refreshInterval != 0 and (time.time() - self.refreshTimestamp > self.refreshInterval):
+            if not self.reconcileMode and self.refreshInterval != 0 and (time.time() - self.refreshTimestamp > self.refreshInterval):
                 logging.debug("classify - Triggered auto-refresh")
                 self.refreshTimestamp = time.time()
                 self.refresh_master_dict()
@@ -362,9 +363,7 @@ class ImageClassifier(tk.Frame):
                     else:
                         self.masterLabeled[imageName] = [(user, label)]
 
-    def refresh_master_dict(self):
-        '''Updates the list of users and master dictionary then refreshes the img_list accordingly. Does not re-explore the directory.'''
-
+    def update_user_list(self):
         # Update the list of users
         newUsers = self.get_all_users()
         ## If new users are detected, update the names in the UI
@@ -372,6 +371,12 @@ class ImageClassifier(tk.Frame):
             logging.debug("Updating the list of users")
             self.users = newUsers
             self.update_users_displayed()
+
+    def refresh_master_dict(self):
+        '''Updates the list of users and master dictionary then refreshes the img_list accordingly. Does not re-explore the directory.'''
+
+        #Update the list of users
+        self.update_user_list()
         
         # Update the master dict by refreshing it
         self.update_master_dict()
@@ -517,7 +522,46 @@ class ImageClassifier(tk.Frame):
         pass
 
     def reconcile(self):
-        pass
+        '''Display images with disagreed labels for reconciliation'''
+        # TODO: Create a button to go back to normal mode when in reconcile mode
+
+        # Enable recondile Mode (autoRefresh off)
+        self.reconcileMode = True
+
+        # Update user list and master dict
+        self.update_user_list()
+        self.update_master_dict()
+
+        # Rebuild the image list 
+        labeledAgreed = []
+        labeledDisagreed = []
+        toLabel = []
+
+        for img in self.image_list:
+            if img in self.masterLabeled:
+                num_user_labels = len(self.masterLabeled[img])
+                # If only one user labeled the image, it is not disagreed
+                if num_user_labels == 1:
+                    labeledAgreed.append(img)
+                # If multiple labels are found, compare the labels
+                # TODO: Improve the speed of this logic.
+                elif num_user_labels > 1:
+                    selectedLabel = None
+                    for (user, label) in self.masterLabeled[img]:
+                        if not selectedLabel:
+                            selectedLabel = label
+                        elif label != selectedLabel:
+                            labeledDisagreed.append(img)
+                            break
+                    if img not in labeledDisagreed:
+                        labeledAgreed.append(img)
+            else:
+                toLabel.append(img)
+
+        self.counter = len(labeledAgreed)
+        self.image_list = labeledAgreed + labeledDisagreed + toLabel
+        logging.info(f"Reconcile Mode - {len(labeledAgreed)} images with agreed labels, {len(labeledDisagreed)} images with disagreed lables, {len(toLabel)} images to label")
+        self.display_image()
 
     def keypress_handler(self,e):
         try:
