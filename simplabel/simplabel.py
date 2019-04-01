@@ -8,6 +8,7 @@ import time
 import sys
 import logging
 import random
+import getpass
 
 
 class ImageClassifier(tk.Frame):
@@ -101,9 +102,15 @@ class ImageClassifier(tk.Frame):
             self.username = sanName
             logging.info("Username: {}".format(self.username))
         else:
-            # TODO: Rewrite to use hostname / system username if no username is passed
-            self.username = "guest"
-            logging.info("No username passed, saving as guest")
+            try:
+                username = getpass.getuser()
+                logging.info("No username passed, using system username: {}".format(username))
+            except:
+                username = "guest"
+                logging.warning("No username passed, saving as guest")
+            finally:
+                self.username = username
+                
 
         # Choose a color for the user and make sure user is in self.users
         if self.username in self.users:
@@ -167,7 +174,8 @@ class ImageClassifier(tk.Frame):
         self.prevButton.pack(in_=self.frame0, side = tk.LEFT)
         self.nextButton = tk.Button(self.root, text='>', height=2, width=3, command =self.next_image)
         self.nextButton.pack(in_=self.frame0, side = tk.LEFT)
-        tk.Button(self.root, text='>?', height=2, width=3, wraplength=80, command =self.goto_next_unlabeled).pack(in_=self.frame0, side = tk.LEFT)
+        self.nextUnlabeledButton = tk.Button(self.root, text='>?', height=2, width=3, wraplength=80, command =self.goto_next_unlabeled)
+        self.nextUnlabeledButton.pack(in_=self.frame0, side = tk.LEFT)
         self.buttonOrigColor = self.firstButton.config()['highlightbackground'][-1]
         self.lastButton = tk.Button(self.root, text='>>|', height=2, width=3, command =self.goto_last_image)
         self.lastButton.pack(in_=self.frame0, side = tk.LEFT)
@@ -178,7 +186,7 @@ class ImageClassifier(tk.Frame):
         tk.Button(self.root, text='Exit', height=2, width=8, command =self.exit).pack(in_=self.frame0, side = tk.RIGHT)
         self.masterButton = tk.Button(self.root, text='Make Master', height=2,  wraplength=80, width=8, command =self.make_master)
         self.masterButton.pack(in_=self.frame0, side = tk.RIGHT)
-        self.reconcileButton = tk.Button(self.root, text='Reconcile', height=2, width=8, command =self.reconcile)
+        self.reconcileButton = tk.Button(self.root, text='Reconcile',  wraplength=80, height=2, width=8, command =self.reconcile)
         self.reconcileButton.pack(in_=self.frame0, side = tk.RIGHT)
 
         # Create a textbox for the current image information
@@ -425,6 +433,7 @@ class ImageClassifier(tk.Frame):
 
     def goto_next_unlabeled(self):
         '''Displays the unlabeled image with the smallest index number'''
+        # TODO: update to work in reconcile mode
         for idx, img in enumerate(self.image_list):
             if img not in self.labeled and img not in self.masterLabeled:
                 self.counter = idx
@@ -503,14 +512,18 @@ class ImageClassifier(tk.Frame):
             # Disable back button if on first image
             if self.counter == 0:
                 self.prevButton.config(state = tk.DISABLED)
+                self.firstButton.config(state = tk.DISABLED)
             else:
                 self.prevButton.config(state = tk.NORMAL)
+                self.firstButton.config(state = tk.NORMAL)
 
             # Disable next button on last image
             if self.counter == self.max_count:
                 self.nextButton.config(state = tk.DISABLED)
+                self.lastButton.config(state = tk.DISABLED)
             else:
                 self.nextButton.config(state = tk.NORMAL)
+                self.lastButton.config(state = tk.NORMAL)
 
             # Auto-save and auto-refresh
             if self.saveInterval != 0 and (time.time() - self.saveTimestamp) > self.saveInterval:
@@ -523,45 +536,67 @@ class ImageClassifier(tk.Frame):
 
     def reconcile(self):
         '''Display images with disagreed labels for reconciliation'''
-        # TODO: Create a button to go back to normal mode when in reconcile mode
 
-        # Enable recondile Mode (autoRefresh off)
-        self.reconcileMode = True
+        # Turn on Reconcile Mode
+        if self.reconcileMode == False:
+            # Enable recondile Mode (autoRefresh off)
+            self.reconcileMode = True
 
-        # Update user list and master dict
-        self.update_user_list()
-        self.update_master_dict()
+            # Change button text and status
+            self.reconcileButton.config(text = "Back", highlightbackground='#3E4149')
 
-        # Rebuild the image list 
-        labeledAgreed = []
-        labeledDisagreed = []
-        toLabel = []
+            # Disable the next_unlabelled button
+            self.nextUnlabeledButton.config(state = tk.DISABLED)
 
-        for img in self.image_list:
-            if img in self.masterLabeled:
-                num_user_labels = len(self.masterLabeled[img])
-                # If only one user labeled the image, it is not disagreed
-                if num_user_labels == 1:
-                    labeledAgreed.append(img)
-                # If multiple labels are found, compare the labels
-                # TODO: Improve the speed of this logic.
-                elif num_user_labels > 1:
-                    selectedLabel = None
-                    for (user, label) in self.masterLabeled[img]:
-                        if not selectedLabel:
-                            selectedLabel = label
-                        elif label != selectedLabel:
-                            labeledDisagreed.append(img)
-                            break
-                    if img not in labeledDisagreed:
+            # Update user list and master dict
+            self.update_user_list()
+            self.update_master_dict()
+
+            # Rebuild the image list 
+            labeledAgreed = []
+            labeledDisagreed = []
+            toLabel = []
+
+            for img in self.image_list:
+                if img in self.masterLabeled:
+                    num_user_labels = len(self.masterLabeled[img])
+                    # If only one user labeled the image, it is not disagreed
+                    if num_user_labels == 1:
                         labeledAgreed.append(img)
-            else:
-                toLabel.append(img)
+                    # If multiple labels are found, compare the labels
+                    # TODO: Improve the speed of this logic.
+                    elif num_user_labels > 1:
+                        selectedLabel = None
+                        for (_, label) in self.masterLabeled[img]:
+                            if not selectedLabel:
+                                selectedLabel = label
+                            elif label != selectedLabel:
+                                labeledDisagreed.append(img)
+                                break
+                        if img not in labeledDisagreed:
+                            labeledAgreed.append(img)
+                else:
+                    toLabel.append(img)
 
-        self.counter = len(labeledAgreed)
-        self.image_list = labeledAgreed + labeledDisagreed + toLabel
-        logging.info(f"Reconcile Mode - {len(labeledAgreed)} images with agreed labels, {len(labeledDisagreed)} images with disagreed lables, {len(toLabel)} images to label")
-        self.display_image()
+            self.counter = len(labeledAgreed)
+            self.image_list = labeledAgreed + labeledDisagreed + toLabel
+            logging.info(f"Reconcile Mode - {len(labeledAgreed)} images with agreed labels, {len(labeledDisagreed)} images with disagreed lables, {len(toLabel)} images to label")
+            self.display_image()
+
+        # Turn off Reconcile mode
+        else:
+            # Disable reconcile mode
+            self.reconcileMode = False
+
+            # Change button back
+            self.reconcileButton.config(text = "Reconcile", highlightbackground=self.buttonOrigColor)
+
+            # Enable the next_unlabelled button
+            self.nextUnlabeledButton.config(state = tk.NORMAL)
+
+            # Update user list and master dict and go back to next unlabeled image
+            self.refresh_master_dict()
+            self.display_image()
 
     def keypress_handler(self,e):
         try:
