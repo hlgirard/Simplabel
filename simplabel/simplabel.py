@@ -433,12 +433,14 @@ class ImageClassifier(tk.Frame):
 
     def goto_next_unlabeled(self):
         '''Displays the unlabeled image with the smallest index number'''
-        # TODO: update to work in reconcile mode
-        for idx, img in enumerate(self.image_list):
-            if img not in self.labeled and img not in self.masterLabeled:
-                self.counter = idx
-                self.display_image()
-                break
+        if self.reconcileMode:
+            self.counter = len(self.sort_conflicting_imgs()[0])
+        else:
+            for idx, img in enumerate(self.image_list):
+                if img not in self.labeled and img not in self.masterLabeled:
+                    self.counter = idx
+                    break
+        self.display_image()
 
     def display_image(self):
         '''Displays the image corresponding to the current value of the counter'''
@@ -545,42 +547,12 @@ class ImageClassifier(tk.Frame):
             # Change button text and status
             self.reconcileButton.config(text = "Back", highlightbackground='#3E4149')
 
-            # Disable the next_unlabelled button
-            self.nextUnlabeledButton.config(state = tk.DISABLED)
-
-            # Update user list and master dict
-            self.update_user_list()
-            self.update_master_dict()
-
             # Rebuild the image list 
-            labeledAgreed = []
-            labeledDisagreed = []
-            toLabel = []
-
-            for img in self.image_list:
-                if img in self.masterLabeled:
-                    num_user_labels = len(self.masterLabeled[img])
-                    # If only one user labeled the image, it is not disagreed
-                    if num_user_labels == 1:
-                        labeledAgreed.append(img)
-                    # If multiple labels are found, compare the labels
-                    # TODO: Improve the speed of this logic.
-                    elif num_user_labels > 1:
-                        selectedLabel = None
-                        for (_, label) in self.masterLabeled[img]:
-                            if not selectedLabel:
-                                selectedLabel = label
-                            elif label != selectedLabel:
-                                labeledDisagreed.append(img)
-                                break
-                        if img not in labeledDisagreed:
-                            labeledAgreed.append(img)
-                else:
-                    toLabel.append(img)
+            (labeledAgreed, labeledDisagreed, toLabel) = self.sort_conflicting_imgs()
 
             self.counter = len(labeledAgreed)
             self.image_list = labeledAgreed + labeledDisagreed + toLabel
-            logging.info(f"Reconcile Mode - {len(labeledAgreed)} images with agreed labels, {len(labeledDisagreed)} images with disagreed lables, {len(toLabel)} images to label")
+            logging.info(f"Reconcile Mode - {len(labeledAgreed)} images with agreed labels, {len(labeledDisagreed)} images with disagreed labels, {len(toLabel)} images to label")
             self.display_image()
 
         # Turn off Reconcile mode
@@ -591,12 +563,44 @@ class ImageClassifier(tk.Frame):
             # Change button back
             self.reconcileButton.config(text = "Reconcile", highlightbackground=self.buttonOrigColor)
 
-            # Enable the next_unlabelled button
-            self.nextUnlabeledButton.config(state = tk.NORMAL)
-
             # Update user list and master dict and go back to next unlabeled image
             self.refresh_master_dict()
+            logging.info("Labeling Mode")
             self.display_image()
+
+    def sort_conflicting_imgs(self):
+        '''Returns a sub-lists of images: (labeledAgreed, labeledDisagreed, toLabel)'''
+        # TODO: speed up this method ?
+
+        labeledAgreed = []
+        labeledDisagreed = []
+        toLabel = []
+
+        # Update master dict to have a common reference
+        self.update_user_list()
+        self.update_master_dict()
+        
+        for img in self.image_list:
+                if img in self.masterLabeled:
+                    labelList = self.masterLabeled[img]
+                    # If only one user labeled the image, it is not disagreed
+                    if len(labelList) == 1:
+                        labeledAgreed.append(img)
+                    # If multiple labels are found, compare the labels
+                    elif len(labelList) > 1:
+                        selectedLabel = None
+                        for (_, label) in labelList:
+                            if not selectedLabel:
+                                selectedLabel = label
+                            elif label != selectedLabel:
+                                labeledDisagreed.append(img)
+                                break
+                        if img not in labeledDisagreed:
+                            labeledAgreed.append(img)
+                else:
+                    toLabel.append(img)
+
+        return (labeledAgreed, labeledDisagreed, toLabel)
 
     def keypress_handler(self,e):
         try:
