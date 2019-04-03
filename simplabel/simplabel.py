@@ -30,6 +30,8 @@ class ImageClassifier(tk.Frame):
         Username to be used for multi-user mode
     autoRefresh : int
         Interval in seconds between auto-save and auto-refresh of master dict actions (0 to disable)
+    bResetLock: bool
+        When true, ignores and resets the lock that prevents multiple users from using the same username
 
     Notable attributes
     -------
@@ -143,14 +145,34 @@ class ImageClassifier(tk.Frame):
         # Directory containing the saved labeled dictionary
         ## Note: username will be "guest" if none was passed as command line argument
         self.savepath = self.folder + "/labeled_" + self.username +".pkl"
+
+        # Initialize UI
+        self.initialize_ui()
+
+        # Categories for the labelling task
+        self.labels_from_file = False
+        self.categories = categories
+        self.initialize_labels()
+
+        # Initialize data
+        self.initialize_data()
+
+        # Create a button for each of the categories
+        self.draw_label_buttons()
         
+        # Display the first image
+        self.display_image()
+
+    ##############################
+    ### Initializing methods #####
+    ##############################
+
+    def initialize_ui(self):
+        '''Initialize UI with buttons and canvas for image'''
+
         # Make a frame for navigation buttons (at the top of the window)
         self.frame0 = tk.Frame(self.root, width=self.winwidth, height=24, bd=2)
         self.frame0.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-
-        # Make a frame for the user action buttons (below navigation)
-        #self.frame3 = tk.Frame(self.root, width=self.winwidth, height=24, bd=2)
-        #self.frame3.pack(fill=tk.BOTH, expand=True)
 
         # Make a frame to display the image
         self.frame1 = tk.Frame(self.root, width=self.winwidth, height=self.imheight+10, bd=2)
@@ -204,20 +226,6 @@ class ImageClassifier(tk.Frame):
         ## Display all labelers' names
         self.update_users_displayed()
 
-        # Categories for the labelling task
-        self.labels_from_file = False
-        self.categories = categories
-        self.initialize_labels()
-
-        # Initialize data
-        self.initialize_data()
-
-        # Create a button for each of the categories
-        self.draw_label_buttons()
-        
-        # Display the first image
-        self.display_image()
-
     def initialize_labels(self):
         '''Loads labels from file if it exists else loads labels passed as argument.'''
 
@@ -247,52 +255,6 @@ class ImageClassifier(tk.Frame):
             logging.warning("No labels provided. Exiting.")
             self.errorClose()
 
-
-    def draw_label_buttons(self):
-        '''Displays a button for each label in the passed frame after emptying it'''
-
-        # Destroy the frame
-        if self.frame2:
-            self.frame2.destroy()
-
-        # Make a frame to display the labelling buttons (at the bottom)
-        self.frame2 = tk.Frame(self.root, width=self.winwidth, height=10, bd=2)
-        self.frame2.pack(side = tk.BOTTOM, fill=tk.BOTH, expand=True)
-
-        # Create and pack a button for each label
-        self.catButton = []
-        for idx, category in enumerate(self.categories):
-            txt = category + " ({})".format(idx+1)
-            self.catButton.append(tk.Button(self.root, text=txt, height=2, width=8, command = partial(self.classify, category)))
-            self.catButton[idx].pack(in_=self.frame2, fill = tk.X, expand = True, side = tk.LEFT)
-        
-        self.addCatButton = tk.Button(self.root, text='+', height=2, width=3, command = self.add_label)
-        self.addCatButton.pack(in_=self.frame2, side = tk.LEFT)
-
-    def add_label(self):
-        '''Adds a label to the list of categories'''
-
-        # Obtain new label name from user
-        labelName = simpledialog.askstring("New label", "Label name:")
-
-        # If the user cancels or doesn't enter anything, return
-        if not labelName:
-            return
-
-        # Normalize the label name
-        sanLabel = ''.join(labelName.strip().lower().split()).capitalize()
-
-        # Add to category list
-        self.categories.append(sanLabel)
-
-        # Save labels to file
-        if not self.labels_from_file:
-            with open(self.labelpath,'wb') as f:
-                pickle.dump(self.categories, f)
-
-        # Redraw label buttons
-        self.draw_label_buttons()
-        
     def initialize_data(self):
         '''Loads existing data from disk if it exists and loads a list of unlabelled images found in the directory'''
         # Initialize current user's dictionary (Note: it might not exist yet)
@@ -363,6 +325,10 @@ class ImageClassifier(tk.Frame):
         # Get number of images   
         self.max_count = len(self.image_list)-1
 
+    ##############################
+    ### Core functionality #######
+    ##############################
+
     def classify(self, category):
         '''Adds a directory entry with the name of the image and the label selected'''
 
@@ -393,6 +359,275 @@ class ImageClassifier(tk.Frame):
                 self.display_image()
             else:
                 self.next_image()
+
+    def make_master(self):
+        '''Reconcile conflicting labels and make a master dictionary'''
+
+        # Refresh
+        # Prepare lists of imgs, dump labeledAgree in masterdict
+        # Enter reconcile mode and change user to 'master'
+        # Display 'Master Mode'
+        # After reconciliation, save master dict.
+
+        # Refresh user list and allLabeledDict and sort labeled images
+        # Note: sort_conflictinh_imgs refreshes the users and allLabeledDict
+        self.save()
+        (_, labeledDisagreed, toLabel) = self.sort_conflicting_imgs()
+
+        # Check if there are any disagreed labels, enter reconcile mode and return if there are
+        if len(labeledDisagreed) != 0:
+            showwarning("Reconciliation needed", "Some images have conflicting labels, please reconcile them and try again.")
+            self.reconcile()
+            return
+        # Check to see whether there are images left to label, ask user if they want to proceed anyway
+        elif len(toLabel) != 0:
+            response = askquestion("Unlabeled images", "Some images have not been labeled yet, do you want to proceed anyway?")
+            if response == 'no':
+                return
+
+        # Make a master dictionary
+        masterDict = {}
+
+        for img in self.allLabeledDict:
+            masterDict[img] = next(iter(self.allLabeledDict[img].values())) # any value will do since they all agree
+
+        # Save the master dictionary to disk
+        logging.info('Saved the master dictionary to disk.')
+        self.dump_dict(masterDict, self.folder + '/labeled_master.pkl')
+
+        # Change the button color
+        self.masterButton.config(highlightbackground='#3E4149')
+        
+    def reconcile(self):
+        '''Display images with disagreed labels for reconciliation'''
+
+        # Turn on Reconcile Mode
+        if self.reconcileMode == False:
+
+            # Check locks and return if a lock a asserted.
+            for user in self.users:
+                if user != self.username:
+                    logging.debug("reconcile - checking lock for user {}".format(user))
+                    lock = FsLock(self.folder, user)
+                    if lock.is_locked():
+                        logging.warning("{} is logged in the app, cannot reconcile unless all users have closed the app.".format(user))
+                        return
+            
+            # Must save before starting reconcile mode
+            if not self.saved:
+                result = askokcancel('Save?', 'Results must be saved before entering reconciliation', icon = 'warning')
+                if result:
+                    self.save()
+                else:
+                    return
+
+            # Enable recondile Mode (autoRefresh off)
+            self.reconcileMode = True
+
+            # Change button text and status
+            self.reconcileButton.config(text = "Back", highlightbackground='#3E4149')
+
+            # Rebuild the image list 
+            (labeledAgreed, labeledDisagreed, toLabel) = self.sort_conflicting_imgs()
+
+            # Initialize an empty reconciledLabelsDict
+            self.reconciledLabelsDict = {}
+
+            # Setup the counter, image_list and display the next image
+            self.counter = len(labeledAgreed)
+            self.image_list = labeledAgreed + labeledDisagreed + toLabel
+            logging.info(f"Reconcile Mode - {len(labeledAgreed)} images with agreed labels, {len(labeledDisagreed)} images with disagreed labels, {len(toLabel)} images to label")
+            self.display_image()
+
+        # Turn off Reconcile mode
+        else:
+            # Must save before going back to normal mode
+            if not self.saved:
+                result = askquestion('Save?', 'Do you want to save the reconciliation results?', icon = 'warning')
+                if result:
+                    self.save()
+                else:
+                    return
+
+            # Disable reconcile mode
+            self.reconcileMode = False
+
+            # Change button back
+            self.reconcileButton.config(text = "Reconcile", highlightbackground=self.buttonOrigColor)
+
+            # Destroy reconciledLabelsDict
+            self.reconciledLabelsDict = None
+
+            # Update user list and master dict and go back to next unlabeled image
+            self.labeled = self.load_dict(self.savepath)
+            self.refresh_all_dict()
+            logging.info("Labeling Mode")
+            self.display_image()
+
+    ##############################
+    ### GUI Updating #############
+    ##############################
+
+    def draw_label_buttons(self):
+        '''Displays a button for each label in the passed frame after emptying it'''
+
+        # Destroy the frame
+        if self.frame2:
+            self.frame2.destroy()
+
+        # Make a frame to display the labelling buttons (at the bottom)
+        self.frame2 = tk.Frame(self.root, width=self.winwidth, height=10, bd=2)
+        self.frame2.pack(side = tk.BOTTOM, fill=tk.BOTH, expand=True)
+
+        # Create and pack a button for each label
+        self.catButton = []
+        for idx, category in enumerate(self.categories):
+            txt = category + " ({})".format(idx+1)
+            self.catButton.append(tk.Button(self.root, text=txt, height=2, width=8, command = partial(self.classify, category)))
+            self.catButton[idx].pack(in_=self.frame2, fill = tk.X, expand = True, side = tk.LEFT)
+        
+        self.addCatButton = tk.Button(self.root, text='+', height=2, width=3, command = self.add_label)
+        self.addCatButton.pack(in_=self.frame2, side = tk.LEFT)
+
+    def update_users_displayed(self):
+        ## Print the name of the current user 
+        self.infoText.config(state=tk.NORMAL)
+        self.infoText.delete('2.0', '2.end')
+        self.infoText.insert('2.0', "\nLabelers: ", 'c')
+        self.infoText.insert(tk.END, "{}".format(self.username), ('c', '{}Color'.format(self.username), 'u'))
+
+        ## Print the names of other labelers
+        for user in self.users:
+            if user != self.username:
+                self.infoText.insert(tk.END, ", ", ('c',))
+                self.infoText.insert(tk.END, "{}".format(user), ('c', '{}Color'.format(user)))
+
+        ## Disable the textbox
+        self.infoText.config(state=tk.DISABLED)
+
+    def display_image(self):
+        '''Displays the image corresponding to the current value of the counter'''
+
+        # If the counter overflows, go back to the last image
+        if self.counter > self.max_count and self.max_count > -1:
+            logging.debug("display_image - Counter overflowed")
+            self.counter = self.max_count
+            self.display_image()
+        # If there are no images to label, exit
+        elif self.max_count == 0:
+            logging.warning("No images to label")
+            self.errorClose()
+        else:
+            img = self.image_list[self.counter] # Name of current image
+            self.im = Image.open("{}{}".format(self.folder + '/', img))
+            if (self.imwidth-self.im.size[0])<(self.imheight-self.im.size[1]):
+                width = self.imwidth
+                height = width*self.im.size[1]/self.im.size[0]
+            else:
+                height = self.imheight
+                width = height*self.im.size[0]/self.im.size[1]
+            
+            self.im.thumbnail((width, height), Image.ANTIALIAS)
+            self.photo = ImageTk.PhotoImage(self.im)
+
+            if self.counter == 0:
+                self.cv1.create_image(0, 0, anchor = 'nw', image = self.photo)
+
+            else:
+                self.cv1.delete("all")
+                self.cv1.create_image(0, 0, anchor = 'nw', image = self.photo)
+
+            # Edit the text information
+            self.infoText.config(state=tk.NORMAL)
+            self.infoText.delete('1.0', '1.end')
+            self.infoText.insert('1.0',"Image {}/{} - Filename: {}".format(self.counter+1,self.max_count+1,img), 'c')
+            self.infoText.config(state=tk.DISABLED)
+
+            # Reset all button styles (colors and outline)
+            self.saveButton.config(highlightbackground = self.buttonOrigColor)
+            self.masterButton.config(highlightbackground= self.buttonOrigColor)
+            for i in range(len(self.catButton)):
+                self.catButton[i].config(highlightbackground = self.buttonOrigColor)
+
+            # Display the associated label(s) from any user as colored background for the label button
+            if self.reconciledLabelsDict and img in self.reconciledLabelsDict:
+                label = self.reconciledLabelsDict[img]
+                idxLabel = self.categories.index(label)
+                self.catButton[idxLabel].config(highlightbackground='#3E4149')
+            elif img in self.allLabeledDict:
+                labelDict = {}
+                for (user, label) in self.allLabeledDict[img].items():
+                    if label in labelDict:
+                        labelDict[label].append(self.userColors[user])
+                    else:
+                        labelDict[label] = [self.userColors[user]]
+                # The img might be in self.labeled but not yet in self.allLabeledDict (between updates of allLabeledDict)
+                if img in self.labeled:
+                    label = self.labeled[img]
+                    if label in labelDict and self.userColor not in labelDict[label]:
+                        labelDict[label].append(self.userColor)
+                    elif label not in labelDict:
+                        labelDict[label] = [self.userColor]
+                for label in labelDict:
+                    idxLabel = self.categories.index(label)
+                    if len(labelDict[label]) == 1:
+                        self.catButton[idxLabel].config(highlightbackground=labelDict[label][0])
+                    else:
+                        self.catButton[idxLabel].config(highlightbackground='#3E4149')
+            elif img in self.labeled:
+                label = self.labeled[img]
+                idxLabel = self.categories.index(label)
+                self.catButton[idxLabel].config(highlightbackground=self.userColor)
+
+            # Disable back button if on first image
+            if self.counter == 0:
+                self.prevButton.config(state = tk.DISABLED)
+                self.firstButton.config(state = tk.DISABLED)
+            else:
+                self.prevButton.config(state = tk.NORMAL)
+                self.firstButton.config(state = tk.NORMAL)
+
+            # Disable next button on last image
+            if self.counter == self.max_count:
+                self.nextButton.config(state = tk.DISABLED)
+                self.lastButton.config(state = tk.DISABLED)
+            else:
+                self.nextButton.config(state = tk.NORMAL)
+                self.lastButton.config(state = tk.NORMAL)
+
+            # Auto-save and auto-refresh
+            if self.saveInterval != 0 and (time.time() - self.saveTimestamp) > self.saveInterval:
+                logging.debug("display_image - Auto-save triggered")
+                self.saveTimestamp = time.time()
+                self.save()
+
+    ##############################
+    ### Helper functions #########
+    ##############################
+
+    def add_label(self):
+        '''Adds a label to the list of categories'''
+
+        # Obtain new label name from user
+        labelName = simpledialog.askstring("New label", "Label name:")
+
+        # If the user cancels or doesn't enter anything, return
+        if not labelName:
+            return
+
+        # Normalize the label name
+        sanLabel = ''.join(labelName.strip().lower().split()).capitalize()
+
+        # Add to category list
+        self.categories.append(sanLabel)
+
+        # Save labels to file
+        if not self.labels_from_file:
+            with open(self.labelpath,'wb') as f:
+                pickle.dump(self.categories, f)
+
+        # Redraw label buttons
+        self.draw_label_buttons()
             
     def get_all_users(self):
         '''Returns a list of all users detected in the directory'''
@@ -499,207 +734,6 @@ class ImageClassifier(tk.Frame):
                     break
         self.display_image()
 
-    def display_image(self):
-        '''Displays the image corresponding to the current value of the counter'''
-
-        # If the counter overflows, go back to the last image
-        if self.counter > self.max_count and self.max_count > -1:
-            logging.debug("display_image - Counter overflowed")
-            self.counter = self.max_count
-            self.display_image()
-        # If there are no images to label, exit
-        elif self.max_count == 0:
-            logging.warning("No images to label")
-            self.errorClose()
-        else:
-            img = self.image_list[self.counter] # Name of current image
-            self.im = Image.open("{}{}".format(self.folder + '/', img))
-            if (self.imwidth-self.im.size[0])<(self.imheight-self.im.size[1]):
-                width = self.imwidth
-                height = width*self.im.size[1]/self.im.size[0]
-            else:
-                height = self.imheight
-                width = height*self.im.size[0]/self.im.size[1]
-            
-            self.im.thumbnail((width, height), Image.ANTIALIAS)
-            self.photo = ImageTk.PhotoImage(self.im)
-
-            if self.counter == 0:
-                self.cv1.create_image(0, 0, anchor = 'nw', image = self.photo)
-
-            else:
-                self.cv1.delete("all")
-                self.cv1.create_image(0, 0, anchor = 'nw', image = self.photo)
-
-            # Edit the text information
-            self.infoText.config(state=tk.NORMAL)
-            self.infoText.delete('1.0', '1.end')
-            self.infoText.insert('1.0',"Image {}/{} - Filename: {}".format(self.counter+1,self.max_count+1,img), 'c')
-            self.infoText.config(state=tk.DISABLED)
-
-            # Reset all button styles (colors and outline)
-            self.saveButton.config(highlightbackground = self.buttonOrigColor)
-            self.masterButton.config(highlightbackground= self.buttonOrigColor)
-            for i in range(len(self.catButton)):
-                self.catButton[i].config(highlightbackground = self.buttonOrigColor)
-
-            # Display the associated label(s) from any user as colored background for the label button
-            if self.reconciledLabelsDict and img in self.reconciledLabelsDict:
-                label = self.reconciledLabelsDict[img]
-                idxLabel = self.categories.index(label)
-                self.catButton[idxLabel].config(highlightbackground='#3E4149')
-            elif img in self.allLabeledDict:
-                labelDict = {}
-                for (user, label) in self.allLabeledDict[img].items():
-                    if label in labelDict:
-                        labelDict[label].append(self.userColors[user])
-                    else:
-                        labelDict[label] = [self.userColors[user]]
-                # The img might be in self.labeled but not yet in self.allLabeledDict (between updates of allLabeledDict)
-                if img in self.labeled:
-                    label = self.labeled[img]
-                    if label in labelDict and self.userColor not in labelDict[label]:
-                        labelDict[label].append(self.userColor)
-                    elif label not in labelDict:
-                        labelDict[label] = [self.userColor]
-                for label in labelDict:
-                    idxLabel = self.categories.index(label)
-                    if len(labelDict[label]) == 1:
-                        self.catButton[idxLabel].config(highlightbackground=labelDict[label][0])
-                    else:
-                        self.catButton[idxLabel].config(highlightbackground='#3E4149')
-            elif img in self.labeled:
-                label = self.labeled[img]
-                idxLabel = self.categories.index(label)
-                self.catButton[idxLabel].config(highlightbackground=self.userColor)
-
-            # Disable back button if on first image
-            if self.counter == 0:
-                self.prevButton.config(state = tk.DISABLED)
-                self.firstButton.config(state = tk.DISABLED)
-            else:
-                self.prevButton.config(state = tk.NORMAL)
-                self.firstButton.config(state = tk.NORMAL)
-
-            # Disable next button on last image
-            if self.counter == self.max_count:
-                self.nextButton.config(state = tk.DISABLED)
-                self.lastButton.config(state = tk.DISABLED)
-            else:
-                self.nextButton.config(state = tk.NORMAL)
-                self.lastButton.config(state = tk.NORMAL)
-
-            # Auto-save and auto-refresh
-            if self.saveInterval != 0 and (time.time() - self.saveTimestamp) > self.saveInterval:
-                logging.debug("display_image - Auto-save triggered")
-                self.saveTimestamp = time.time()
-                self.save()
-
-    def make_master(self):
-        '''Reconcile conflicting labels and make a master dictionary'''
-
-        # Refresh
-        # Prepare lists of imgs, dump labeledAgree in masterdict
-        # Enter reconcile mode and change user to 'master'
-        # Display 'Master Mode'
-        # After reconciliation, save master dict.
-
-        # Refresh user list and allLabeledDict and sort labeled images
-        # Note: sort_conflictinh_imgs refreshes the users and allLabeledDict
-        self.save()
-        (_, labeledDisagreed, toLabel) = self.sort_conflicting_imgs()
-
-        # Check if there are any disagreed labels, enter reconcile mode and return if there are
-        if len(labeledDisagreed) != 0:
-            showwarning("Reconciliation needed", "Some images have conflicting labels, please reconcile them and try again.")
-            self.reconcile()
-            return
-        # Check to see whether there are images left to label, ask user if they want to proceed anyway
-        elif len(toLabel) != 0:
-            response = askquestion("Unlabeled images", "Some images have not been labeled yet, do you want to proceed anyway?")
-            if response == 'no':
-                return
-
-        # Make a master dictionary
-        masterDict = {}
-
-        for img in self.allLabeledDict:
-            masterDict[img] = next(iter(self.allLabeledDict[img].values())) # any value will do since they all agree
-
-        # Save the master dictionary to disk
-        logging.info('Saved the master dictionary to disk.')
-        self.dump_dict(masterDict, self.folder + '/labeled_master.pkl')
-
-        # Change the button color
-        self.masterButton.config(highlightbackground='#3E4149')
-        
-
-    def reconcile(self):
-        '''Display images with disagreed labels for reconciliation'''
-
-        # Turn on Reconcile Mode
-        if self.reconcileMode == False:
-
-            # Check locks and return if a lock a asserted.
-            for user in self.users:
-                if user != self.username:
-                    logging.debug("reconcile - checking lock for user {}".format(user))
-                    lock = FsLock(self.folder, user)
-                    if lock.is_locked():
-                        logging.warning("{} is logged in the app, cannot reconcile unless all users have closed the app.".format(user))
-                        return
-            
-            # Must save before starting reconcile mode
-            if not self.saved:
-                result = askokcancel('Save?', 'Results must be saved before entering reconciliation', icon = 'warning')
-                if result:
-                    self.save()
-                else:
-                    return
-
-            # Enable recondile Mode (autoRefresh off)
-            self.reconcileMode = True
-
-            # Change button text and status
-            self.reconcileButton.config(text = "Back", highlightbackground='#3E4149')
-
-            # Rebuild the image list 
-            (labeledAgreed, labeledDisagreed, toLabel) = self.sort_conflicting_imgs()
-
-            # Initialize an empty reconciledLabelsDict
-            self.reconciledLabelsDict = {}
-
-            # Setup the counter, image_list and display the next image
-            self.counter = len(labeledAgreed)
-            self.image_list = labeledAgreed + labeledDisagreed + toLabel
-            logging.info(f"Reconcile Mode - {len(labeledAgreed)} images with agreed labels, {len(labeledDisagreed)} images with disagreed labels, {len(toLabel)} images to label")
-            self.display_image()
-
-        # Turn off Reconcile mode
-        else:
-            # Must save before going back to normal mode
-            if not self.saved:
-                result = askquestion('Save?', 'Do you want to save the reconciliation results?', icon = 'warning')
-                if result:
-                    self.save()
-                else:
-                    return
-
-            # Disable reconcile mode
-            self.reconcileMode = False
-
-            # Change button back
-            self.reconcileButton.config(text = "Reconcile", highlightbackground=self.buttonOrigColor)
-
-            # Destroy reconciledLabelsDict
-            self.reconciledLabelsDict = None
-
-            # Update user list and master dict and go back to next unlabeled image
-            self.labeled = self.load_dict(self.savepath)
-            self.refresh_all_dict()
-            logging.info("Labeling Mode")
-            self.display_image()
-
     def sort_conflicting_imgs(self):
         '''Returns a sub-lists of images: (labeledAgreed, labeledDisagreed, toLabel)'''
         # TODO: speed up this method ?
@@ -765,22 +799,6 @@ class ImageClassifier(tk.Frame):
             print(self.labeled[self.image_list[self.counter]])
         else:
             print("Not found")
-    
-    def update_users_displayed(self):
-        ## Print the name of the current user 
-        self.infoText.config(state=tk.NORMAL)
-        self.infoText.delete('2.0', '2.end')
-        self.infoText.insert('2.0', "\nLabelers: ", 'c')
-        self.infoText.insert(tk.END, "{}".format(self.username), ('c', '{}Color'.format(self.username), 'u'))
-
-        ## Print the names of other labelers
-        for user in self.users:
-            if user != self.username:
-                self.infoText.insert(tk.END, ", ", ('c',))
-                self.infoText.insert(tk.END, "{}".format(user), ('c', '{}Color'.format(user)))
-
-        ## Disable the textbox
-        self.infoText.config(state=tk.DISABLED)
 
     def save(self):
         '''Save the labeled dictionary to disk'''
