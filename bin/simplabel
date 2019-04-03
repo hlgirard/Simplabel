@@ -4,6 +4,7 @@ import os
 import argparse
 import tkinter as tk
 import sys
+import pickle
 
 import simplabel
 
@@ -15,6 +16,7 @@ ap.add_argument("-v", "--verbose", action='store_true', help="Enable verbose mod
 ap.add_argument("-u", "--user", help="Set username for the current session")
 ap.add_argument("--delete-all", action='store_true', help="Deletes any existing data and starts a new labelling task")
 ap.add_argument("--reset-lock", action='store_true', help="Overrides the lock in case of incorrect lockout")
+ap.add_argument("--remove-label", help="Remove a label")
 
 
 args = ap.parse_args()
@@ -38,6 +40,46 @@ if args.delete_all:
         else:
             print("Cancelled deletion, your files are exactly where you left them ;)")
     sys.exit(0)
+
+def remove_label(labelName):
+    '''Removes a label from the label file after verifying it isn't in use'''
+
+    labelToRemove = ''.join(labelName.strip().lower().split()).capitalize()
+
+    # Load the label file to check the presence of the label to remove
+    labelFile = rawDirectory + '/labels.pkl'
+    if os.path.isfile(labelFile):
+        with open(labelFile, 'rb') as f:
+            labels = pickle.load(f)
+        if labelToRemove not in labels:
+            print("No such label in labels.pkl")
+            sys.exit(0)
+    else:
+        print("No label file found.")
+        sys.exit(0)
+    
+    # Get a list of users
+    users = [f.split('_')[1].split('.')[0] for f in os.listdir(rawDirectory) if (f.endswith('.pkl') and f.startswith('labeled_'))]
+
+    # Load each user's dictionary and check for the presense of the label to remove
+    for user in users:
+        dictPath = rawDirectory + "/labeled_" + user +".pkl"
+        with open(dictPath, "rb") as f:
+            userDict = pickle.load(f)
+        if labelToRemove in userDict.values():
+            print("Label {} is used by {}, cannot remove it from the list".format(labelToRemove, user))
+            sys.exit(0)
+
+    # If the check have passed, remove the label from the list and resave the list
+    labels.remove(labelToRemove)
+    with open(labelFile, 'wb') as f:
+        pickle.dump(labels, f)
+    
+    print("Successfully removed label {} from the list".format(labelToRemove))
+
+# Remove label
+if args.remove_label:
+    remove_label(args.remove_label)
 
 # Launch the app
 root = tk.Tk() 

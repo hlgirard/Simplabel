@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter.messagebox import askquestion, askokcancel, showwarning
+from tkinter import simpledialog
 from PIL import Image,ImageTk
 import os
 from functools import partial
@@ -159,10 +160,8 @@ class ImageClassifier(tk.Frame):
         self.cv1 = tk.Canvas(self.frame1, width=self.imwidth, height=self.imheight, background="white", bd=1, relief=tk.RAISED)
         self.cv1.pack(in_=self.frame1)
 
-        # Make a frame to display the labelling buttons (at the bottom)
-        self.frame2 = tk.Frame(self.root, width=self.winwidth, height=10, bd=2)
-        self.frame2.pack(side = tk.BOTTOM, fill=tk.BOTH, expand=True)
-
+        # Placeholder for the label button frame 
+        self.frame2 = None
 
         # Create the key bindings
         self.root.bind("<Key>", self.keypress_handler)
@@ -214,34 +213,85 @@ class ImageClassifier(tk.Frame):
         self.initialize_data()
 
         # Create a button for each of the categories
+        self.draw_label_buttons()
+        
+        # Display the first image
+        self.display_image()
+
+    def initialize_labels(self):
+        '''Loads labels from file if it exists else loads labels passed as argument.'''
+
+        # If a label file is found, use that and issue a warning that passed categories are ignored
+        if os.path.isfile(self.labelpath):
+            if self.categories:
+                logging.warning("Found label file, ignoring labels passed as argument.")
+            with open(self.labelpath, 'rb') as f:
+                self.categories = pickle.load(f)
+            logging.info("Loaded labels from file: {}".format(self.categories))
+        
+        # If no file is found and there are passed arguments, sanitize and use them
+        elif self.categories:
+            sanCategories = []
+            for category in self.categories:
+                sanCategories.append(''.join(category.strip().lower().split()).capitalize())
+            self.categories = sanCategories
+            logging.info("Using labels passed as argument: {}".format(self.categories))
+
+            # Save labels to file
+            if not self.labels_from_file:
+                with open(self.labelpath,'wb') as f:
+                    pickle.dump(self.categories, f)
+        
+        # If no file and no categories passed, warn and exit
+        else:
+            logging.warning("No labels provided. Exiting.")
+            self.errorClose()
+
+
+    def draw_label_buttons(self):
+        '''Displays a button for each label in the passed frame after emptying it'''
+
+        # Destroy the frame
+        if self.frame2:
+            self.frame2.destroy()
+
+        # Make a frame to display the labelling buttons (at the bottom)
+        self.frame2 = tk.Frame(self.root, width=self.winwidth, height=10, bd=2)
+        self.frame2.pack(side = tk.BOTTOM, fill=tk.BOTH, expand=True)
+
+        # Create and pack a button for each label
         self.catButton = []
         for idx, category in enumerate(self.categories):
             txt = category + " ({})".format(idx+1)
             self.catButton.append(tk.Button(self.root, text=txt, height=2, width=8, command = partial(self.classify, category)))
             self.catButton[idx].pack(in_=self.frame2, fill = tk.X, expand = True, side = tk.LEFT)
         
-        # Display the first image
-        self.display_image()
+        self.addCatButton = tk.Button(self.root, text='+', height=2, width=3, command = self.add_label)
+        self.addCatButton.pack(in_=self.frame2, side = tk.LEFT)
 
-    def initialize_labels(self):
-        '''Loads labels from file if it exists or use labels passed as argument (these override any file defined labels).'''
-        # Passed labels override any existing file
-        if not self.categories:
-            # Check for label file and load if it exists
-            if os.path.isfile(self.labelpath):
-                with open(self.labelpath,"rb") as f:
-                    self.categories = pickle.load(f)
-                self.labels_from_file = True
-                logging.info("Loaded categories from file: {}".format(self.categories))
-            # Exit if no labels are found
-            else:
-                logging.warning("No categories provided. Exiting.")
-                self.errorClose()
-        # If labels are passed, use these and save them to file
-        else:
-            # Add default categories
-            self.categories.append('Remove')
-            logging.info("Using categories passed as argument: {}".format(self.categories))
+    def add_label(self):
+        '''Adds a label to the list of categories'''
+
+        # Obtain new label name from user
+        labelName = simpledialog.askstring("New label", "Label name:")
+
+        # If the user cancels or doesn't enter anything, return
+        if not labelName:
+            return
+
+        # Normalize the label name
+        sanLabel = ''.join(labelName.strip().lower().split()).capitalize()
+
+        # Add to category list
+        self.categories.append(sanLabel)
+
+        # Save labels to file
+        if not self.labels_from_file:
+            with open(self.labelpath,'wb') as f:
+                pickle.dump(self.categories, f)
+
+        # Redraw label buttons
+        self.draw_label_buttons()
         
     def initialize_data(self):
         '''Loads existing data from disk if it exists and loads a list of unlabelled images found in the directory'''
@@ -249,23 +299,12 @@ class ImageClassifier(tk.Frame):
         if os.path.isfile(self.savepath):
             self.labeled = self.load_dict(self.savepath)
             logging.info("Loaded existing dictionary from disk")
-            # Check that the categories used in the dictionary are in self.categories
-            if any([val not in self.categories for val in self.labeled.values()]):
-                logging.warning("Labels in dictionary do not match passed categories")
-                logging.warning("Labels in dictionary: {}".format(set(self.labeled.values())))
-                logging.warning("Categories passed: {}".format(self.categories))
-                self.errorClose()
         else:
             self.labeled = {}
             logging.info("No dictionary found, initializing a new one")
 
         # Load data from all users
         self.update_all_dict()
-
-        # All checks for label consistency are over, save labels to file if they were passed as arguments
-        if not self.labels_from_file:
-            with open(self.labelpath,'wb') as f:
-                pickle.dump(self.categories, f)
 
         # Build list of images to classify
         self.image_list = []
