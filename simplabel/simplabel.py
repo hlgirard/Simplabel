@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter.messagebox import askquestion, askokcancel
+from tkinter.messagebox import askquestion, askokcancel, showwarning
 from PIL import Image,ImageTk
 import os
 from functools import partial
@@ -75,7 +75,7 @@ class ImageClassifier(tk.Frame):
         # Initialize state variables
         self.saved = True
         self.reconcileMode = False
-        self.masterLabeledDict = None
+        self.reconciledLabelsDict = None
 
         # Initialize a refresh timestamp and refresh interval for auto-save and auto-refresh master dict
         self.saveTimestamp = time.time()
@@ -243,7 +243,6 @@ class ImageClassifier(tk.Frame):
             self.categories.append('Remove')
             logging.info("Using categories passed as argument: {}".format(self.categories))
         
-
     def initialize_data(self):
         '''Loads existing data from disk if it exists and loads a list of unlabelled images found in the directory'''
         # Initialize current user's dictionary (Note: it might not exist yet)
@@ -261,7 +260,7 @@ class ImageClassifier(tk.Frame):
             logging.info("No dictionary found, initializing a new one")
 
         # Load data from all users
-        self.update_master_dict()
+        self.update_all_dict()
 
         # All checks for label consistency are over, save labels to file if they were passed as arguments
         if not self.labels_from_file:
@@ -332,8 +331,8 @@ class ImageClassifier(tk.Frame):
 
             img = self.image_list[self.counter]
 
-            # Update masterLabeledDict
-            self.masterLabeledDict[img] = category
+            # Update reconciledLabelsDict
+            self.reconciledLabelsDict[img] = category
             
             if self.saved:
                 self.saved = False
@@ -358,21 +357,17 @@ class ImageClassifier(tk.Frame):
             
     def get_all_users(self):
         '''Returns a list of all users detected in the directory'''
-        return [f.split('_')[1].split('.')[0] for f in os.listdir(self.folder) if (f.endswith('.pkl') and f.startswith('labeled_'))]
+        return [f.split('_')[1].split('.')[0] for f in os.listdir(self.folder) if (f.endswith('.pkl') and f.startswith('labeled_') and 'master' not in f)]
     
-    def update_master_dict(self):
+    def update_all_dict(self):
         '''Loads the labeling data from all detected users into a master dictionary.
 
         self.allLabeledDict: {picName: {user: label}}
         '''
 
-        logging.debug("update_master_dict - Refreshing master dictionary")
+        logging.debug("update_all_dict - Refreshing master dictionary")
 
         self.allLabeledDict = {}
-
-        # If reconcileMode was used, get data from masterLabeledDict
-        if self.masterLabeledDict:
-            self.allLabeledDict =  {img: {'master': label} for (img, label) in self.masterLabeledDict.items()}
 
         for user in self.users:
             # Current user is treated separately because dict is already loaded and might not exist on disk
@@ -410,7 +405,7 @@ class ImageClassifier(tk.Frame):
         self.update_user_list()
         
         # Update the master dict by refreshing it
-        self.update_master_dict()
+        self.update_all_dict()
 
         # Rebuild the image_list
         labeledByCurrentUser = []
@@ -505,12 +500,13 @@ class ImageClassifier(tk.Frame):
 
             # Reset all button styles (colors and outline)
             self.saveButton.config(highlightbackground = self.buttonOrigColor)
+            self.masterButton.config(highlightbackground= self.buttonOrigColor)
             for i in range(len(self.catButton)):
                 self.catButton[i].config(highlightbackground = self.buttonOrigColor)
 
             # Display the associated label(s) from any user as colored background for the label button
-            if self.masterLabeledDict and img in self.masterLabeledDict:
-                label = self.masterLabeledDict[img]
+            if self.reconciledLabelsDict and img in self.reconciledLabelsDict:
+                label = self.reconciledLabelsDict[img]
                 idxLabel = self.categories.index(label)
                 self.catButton[idxLabel].config(highlightbackground='#3E4149')
             elif img in self.allLabeledDict:
@@ -569,9 +565,35 @@ class ImageClassifier(tk.Frame):
         # Display 'Master Mode'
         # After reconciliation, save master dict.
 
-        # Enter reconcile mode (refreshes, rebuilds image list)
-        if not self.reconcileMode:
+        # Refresh user list and allLabeledDict and sort labeled images
+        # Note: sort_conflictinh_imgs refreshes the users and allLabeledDict
+        self.save()
+        (_, labeledDisagreed, toLabel) = self.sort_conflicting_imgs()
+
+        # Check if there are any disagreed labels, enter reconcile mode and return if there are
+        if len(labeledDisagreed) != 0:
+            showwarning("Reconciliation needed", "Some images have conflicting labels, please reconcile them and try again.")
             self.reconcile()
+            return
+        # Check to see whether there are images left to label, ask user if they want to proceed anyway
+        elif len(toLabel) != 0:
+            response = askquestion("Unlabeled images", "Some images have not been labeled yet, do you want to proceed anyway?")
+            if response == 'no':
+                return
+
+        # Make a master dictionary
+        masterDict = {}
+
+        for img in self.allLabeledDict:
+            masterDict[img] = next(iter(self.allLabeledDict[img].values())) # any value will do since they all agree
+
+        # Save the master dictionary to disk
+        logging.info('Saved the master dictionary to disk.')
+        self.dump_dict(masterDict, self.folder + '/labeled_master.pkl')
+
+        # Change the button color
+        self.masterButton.config(highlightbackground='#3E4149')
+        
 
     def reconcile(self):
         '''Display images with disagreed labels for reconciliation'''
@@ -605,11 +627,10 @@ class ImageClassifier(tk.Frame):
             # Rebuild the image list 
             (labeledAgreed, labeledDisagreed, toLabel) = self.sort_conflicting_imgs()
 
-            # Add agreed images to the masterLabeled dictionary
-            self.masterLabeledDict = {}
-            for img in labeledAgreed:
-                self.masterLabeledDict[img] = next(iter(self.allLabeledDict[img].values())) # any value will do since they agree
+            # Initialize an empty reconciledLabelsDict
+            self.reconciledLabelsDict = {}
 
+            # Setup the counter, image_list and display the next image
             self.counter = len(labeledAgreed)
             self.image_list = labeledAgreed + labeledDisagreed + toLabel
             logging.info(f"Reconcile Mode - {len(labeledAgreed)} images with agreed labels, {len(labeledDisagreed)} images with disagreed labels, {len(toLabel)} images to label")
@@ -631,6 +652,9 @@ class ImageClassifier(tk.Frame):
             # Change button back
             self.reconcileButton.config(text = "Reconcile", highlightbackground=self.buttonOrigColor)
 
+            # Destroy reconciledLabelsDict
+            self.reconciledLabelsDict = None
+
             # Update user list and master dict and go back to next unlabeled image
             self.labeled = self.load_dict(self.savepath)
             self.refresh_all_dict()
@@ -647,7 +671,7 @@ class ImageClassifier(tk.Frame):
 
         # Update master dict to have a common reference
         self.update_user_list()
-        self.update_master_dict()
+        self.update_all_dict()
         
         for img in self.image_list:
                 if img in self.allLabeledDict:
@@ -681,21 +705,27 @@ class ImageClassifier(tk.Frame):
                 self.save()
             elif e.char == 'q':
                 self.exit()
-            elif e.char == 'r':
-                self.reset_session()
             elif e.char == 'd': # FIXME: debug option only
-                print("allLabeledDict Dict entry:")
-                if self.image_list[self.counter] in self.allLabeledDict:
-                    print(self.allLabeledDict[self.image_list[self.counter]])
-                else:
-                    print("Not found")
-                print("labeled Dict entry:")
-                if self.image_list[self.counter] in self.labeled:
-                    print(self.labeled[self.image_list[self.counter]])
-                else:
-                    print("Not found")
+                self.debug_prints()
             else:
                 pass
+
+    def debug_prints(self):
+        print("----- allLabeledDict Dict entry -----")
+        if self.image_list[self.counter] in self.allLabeledDict:
+            print(self.allLabeledDict[self.image_list[self.counter]])
+        else:
+            print("Not found")
+        print("----- reconciledLabelsDict entry -----")
+        if self.reconciledLabelsDict and self.image_list[self.counter] in self.reconciledLabelsDict:
+            print(self.reconciledLabelsDict[self.image_list[self.counter]])
+        else:
+            print("Not found")
+        print("----- labeledDict entry -----")
+        if self.image_list[self.counter] in self.labeled:
+            print(self.labeled[self.image_list[self.counter]])
+        else:
+            print("Not found")
     
     def update_users_displayed(self):
         ## Print the name of the current user 
@@ -723,9 +753,9 @@ class ImageClassifier(tk.Frame):
                 userDicts[user] = self.load_dict(self.folder + "/labeled_" + user +".pkl")
 
             # For each image, save master label if it exists, otherwise, save user's original label or nothing.
-            for img in self.masterLabeledDict:
+            for img in self.reconciledLabelsDict:
                 for (_, userDict) in userDicts.items():
-                    userDict[img] = self.masterLabeledDict[img]
+                    userDict[img] = self.reconciledLabelsDict[img]
             
             for (user, userDict) in userDicts.items():
                 self.dump_dict(userDict, self.folder + '/labeled_' + user + '.pkl')

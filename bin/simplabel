@@ -10,10 +10,10 @@ import simplabel
 #Setup parser
 ap = argparse.ArgumentParser()
 ap.add_argument("-d", "--directory", default=os.getcwd(), help="Path of the directory")
-ap.add_argument("-c", "--categories", nargs='+', default=None, help="List of categories")
+ap.add_argument("-l", "--labels", nargs='+', default=None, help="List of labels")
 ap.add_argument("-v", "--verbose", action='store_true', help="Enable verbose mode")
 ap.add_argument("-u", "--user", help="Set username for the current session")
-ap.add_argument("--reset", action='store_true', help="Deletes any existing data and starts a new labelling task")
+ap.add_argument("--delete-all", action='store_true', help="Deletes any existing data and starts a new labelling task")
 ap.add_argument("--reset-lock", action='store_true', help="Overrides the lock in case of incorrect lockout")
 
 
@@ -21,13 +21,13 @@ args = ap.parse_args()
 
 # Get the variables from parser
 rawDirectory = args.directory
-categories = args.categories
+categories = args.labels
 verbosity = 1 if args.verbose else 0
 username = args.user
 bResetLock = args.reset_lock
 
 # Reset all saved data if requested
-if args.reset:
+if args.delete_all:
     save_files = [f for f in os.listdir(rawDirectory) if (f.endswith('.pkl') and f.startswith('label'))]
     if len(save_files) > 0:
         response = input("Are you sure you want to delete all saved files: {}? (y/n)".format(save_files))
