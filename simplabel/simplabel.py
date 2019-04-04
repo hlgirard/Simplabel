@@ -81,7 +81,7 @@ class ImageClassifier(tk.Frame):
         self.reconciledLabelsDict = None
         self.redundantMode = bRedundant
         if self.redundantMode:
-            logging.info("Redundant Mode - Other labeler's selections won't be displayed. Reconciliation and Make Master are unavailable.")
+            logging.warning("Redundant Mode - Other labeler's selections won't be displayed. Reconciliation and Make Master are unavailable.")
 
         # Initialize a refresh timestamp and refresh interval for auto-save and auto-refresh master dict
         self.saveTimestamp = time.time()
@@ -186,7 +186,7 @@ class ImageClassifier(tk.Frame):
         self.cv1.pack(in_=self.frame1)
 
         # Placeholder for the label button frame 
-        self.frame2 = None
+        self.labelFrameList = None
 
         # Create the key bindings
         self.root.bind("<Key>", self.keypress_handler)
@@ -249,7 +249,7 @@ class ImageClassifier(tk.Frame):
         elif self.categories:
             sanCategories = []
             for category in self.categories:
-                sanCategories.append(''.join(category.strip().lower().split()).capitalize())
+                sanCategories.append(category.strip().lower().capitalize())
             self.categories = sanCategories
             logging.info("Using labels passed as argument: {}".format(self.categories))
 
@@ -479,23 +479,29 @@ class ImageClassifier(tk.Frame):
     def draw_label_buttons(self):
         '''Displays a button for each label in the passed frame after emptying it'''
 
-        # Destroy the frame
-        if self.frame2:
-            self.frame2.destroy()
+        # Destroy the frames
+        if self.labelFrameList:
+            for frame in self.labelFrameList:
+                frame.destroy()
 
-        # Make a frame to display the labelling buttons (at the bottom)
-        self.frame2 = tk.Frame(self.root, width=self.winwidth, height=10, bd=2)
-        self.frame2.pack(side = tk.BOTTOM, fill=tk.BOTH, expand=True)
+        n_labels = len(self.categories)
+        n_rows = (n_labels-1) // 5 + 1 # Each row can contain up to 4 labels
+        self.labelFrameList = []
+
+        # Make frames to display the labelling buttons (at the bottom)
+        for i in range(n_rows):
+            self.labelFrameList.append(tk.Frame(self.root, width=self.winwidth, height=10, bd=2))
+            self.labelFrameList[i].pack(side = tk.BOTTOM, fill=tk.BOTH, expand=True)
 
         # Create and pack a button for each label
         self.catButton = []
         for idx, category in enumerate(self.categories):
             txt = category + " ({})".format(idx+1)
             self.catButton.append(tk.Button(self.root, text=txt, height=2, width=8, command = partial(self.classify, category)))
-            self.catButton[idx].pack(in_=self.frame2, fill = tk.X, expand = True, side = tk.LEFT)
+            self.catButton[idx].pack(in_=self.labelFrameList[idx//4], fill = tk.X, expand = True, side = tk.LEFT)
         
         self.addCatButton = tk.Button(self.root, text='+', height=2, width=3, command = self.add_label)
-        self.addCatButton.pack(in_=self.frame2, side = tk.LEFT)
+        self.addCatButton.pack(in_=self.labelFrameList[-1], side = tk.LEFT)
 
     def update_users_displayed(self):
 
@@ -633,7 +639,7 @@ class ImageClassifier(tk.Frame):
             return
 
         # Normalize the label name
-        sanLabel = ''.join(labelName.strip().lower().split()).capitalize()
+        sanLabel = labelName.strip().lower().capitalize()
 
         # Add to category list
         self.categories.append(sanLabel)

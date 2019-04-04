@@ -31,23 +31,24 @@ username = args.user
 bResetLock = args.reset_lock
 bRedundant = args.redundant
 
-# Reset all saved data if requested
-if args.delete_all:
-    save_files = [f for f in os.listdir(rawDirectory) if (f.endswith('.pkl') and f.startswith('label'))]
+def delete_all_files(directory):
+    save_files = [f for f in os.listdir(directory) if (f.endswith('.pkl') and f.startswith('label'))]
     if len(save_files) > 0:
         response = input("Are you sure you want to delete all saved files: {}? (y/n)".format(save_files))
         if response == 'y':
             for f in save_files:
-                os.remove(rawDirectory + '/' + f)
+                os.remove(os.path.join(directory,f))
             print("Successfully deleted all saved files")
         else:
             print("Cancelled deletion, your files are exactly where you left them ;)")
+    else:
+        print("No files found in {}".format(directory))
     sys.exit(0)
 
 def remove_label(labelName):
     '''Removes a label from the label file after verifying it isn't in use'''
 
-    labelToRemove = ''.join(labelName.strip().lower().split()).capitalize()
+    labelToRemove = labelName.strip().lower().capitalize()
 
     # Load the label file to check the presence of the label to remove
     labelFile = rawDirectory + '/labels.pkl'
@@ -79,6 +80,11 @@ def remove_label(labelName):
         pickle.dump(labels, f)
     
     print("Successfully removed label {} from the list".format(labelToRemove))
+    sys.exit(0)
+
+# Reset all saved data if requested
+if args.delete_all:
+    delete_all_files(rawDirectory)
 
 # Remove label
 if args.remove_label:
