@@ -12,12 +12,12 @@ import simplabel
 ap = argparse.ArgumentParser()
 ap.add_argument("-d", "--directory", default=os.getcwd(), help="Path of the directory")
 ap.add_argument("-l", "--labels", nargs='+', default=None, help="List of labels")
-ap.add_argument("-v", "--verbose", action='store_true', help="Enable verbose mode")
+ap.add_argument("-v", "--verbose", action='count', default=0, help="Enable verbose mode")
 ap.add_argument("-u", "--user", help="Set username for the current session")
+ap.add_argument("-r", "--redundant", action='store_true', help="Redundant mode: do not show other labeler's selections")
 ap.add_argument("--delete-all", action='store_true', help="Deletes all files created by simplabel in a directory, this resets the labels and all saved data")
 ap.add_argument("--reset-lock", action='store_true', help="Overrides the lock in case of incorrect lockout")
 ap.add_argument("--remove-label", help="Remove a label from the list")
-ap.add_argument("--redundant", action='store_true', help="Redundant mode: do not show other labeler's selections")
 
 
 
@@ -26,7 +26,7 @@ args = ap.parse_args()
 # Get the variables from parser
 rawDirectory = args.directory
 categories = args.labels
-verbosity = 1 if args.verbose else 0
+verbosity = args.verbose
 username = args.user
 bResetLock = args.reset_lock
 bRedundant = args.redundant

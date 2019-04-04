@@ -32,10 +32,12 @@ class ImageClassifier(tk.Frame):
         Interval in seconds between auto-save and auto-refresh of master dict actions (0 to disable)
     bResetLock: bool
         When true, ignores and resets the lock that prevents multiple users from using the same username
+    bRedundant: bool
+        When true, other labeler's selections are not displayed. Reconcile and Master are not available in this mode.
 
-    Notable attributes
+    Notable outputs
     -------
-    labelled : dict(string: string)
+    labelled_user.pkl : pickled dict(string: string)
         Dictionary containing the labels in the form {'relative/path/image_name.jpg': label}
         This dict is saved to disk by the 'Save' button
     """
@@ -46,10 +48,9 @@ class ImageClassifier(tk.Frame):
         tk.Frame.__init__(self, parent, *args, **kwargs)
 
         # Initialize logger
-        verbose = 2 # FIXME: verbosity is set to debug level
         if verbose == 1:
             logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
-        elif verbose == 2:
+        elif verbose >= 2:
             logging.basicConfig(level=logging.DEBUG, format='%(levelname)s - %(message)s')
         else:
             logging.basicConfig(level=logging.WARNING, format='%(levelname)s - %(message)s')
@@ -94,8 +95,9 @@ class ImageClassifier(tk.Frame):
         logging.info("Existing users: {}".format(self.users))
 
         # Assign a color for each user
-        # TODO: Rewrite to ensure each user has a separate color if possible
-        self.userColors = {user: self.user_color_helper(user) for user in self.users}
+        self.userColors = {}
+        for user in self.users:
+            self.userColors[user] = self.user_color_helper(user)
         self.userColors['master'] = '#3E4149'
 
         # Set the username for the current session
@@ -146,7 +148,6 @@ class ImageClassifier(tk.Frame):
         self.gotLock = True
         
         # Directory containing the saved labeled dictionary
-        ## Note: username will be "guest" if none was passed as command line argument
         self.savepath = self.folder + "/labeled_" + self.username +".pkl"
 
         # Initialize UI
@@ -260,7 +261,7 @@ class ImageClassifier(tk.Frame):
         
         # If no file and no categories passed, warn and exit
         else:
-            logging.warning("No labels provided. Exiting.")
+            logging.warning("No labels provided. Use '-l label1 label2 ...' to add them. Exiting.")
             self.errorClose()
 
     def initialize_data(self):
@@ -573,34 +574,36 @@ class ImageClassifier(tk.Frame):
                 self.catButton[i].config(highlightbackground = self.buttonOrigColor)
 
             # Display the associated label(s) from any user as colored background for the label button
+            ## If in reconcileMode, display the chosen label in grey
             if self.reconciledLabelsDict and img in self.reconciledLabelsDict:
                 label = self.reconciledLabelsDict[img]
                 idxLabel = self.categories.index(label)
                 self.catButton[idxLabel].config(highlightbackground='#3E4149')
-            elif img in self.allLabeledDict:
+            else:
                 labelDict = {}
-                for (user, label) in self.allLabeledDict[img].items():
-                    if label in labelDict:
-                        labelDict[label].append(self.userColors[user])
-                    else:
-                        labelDict[label] = [self.userColors[user]]
-                # The img might be in self.labeled but not yet in self.allLabeledDict (between updates of allLabeledDict)
+                ## In normal mode, check allLabeledDict for other user's labels
+                if img in self.allLabeledDict:
+                    for (user, label) in self.allLabeledDict[img].items():
+                        ### Current user's data might not be up to date in allLabeledDict, will user self.labeled
+                        if user != self.username:
+                            if label in labelDict:
+                                labelDict[label].append(self.userColors[user])
+                            else:
+                                labelDict[label] = [self.userColors[user]]
+                ## Get curent user's label from self.labeled
                 if img in self.labeled:
                     label = self.labeled[img]
                     if label in labelDict and self.userColor not in labelDict[label]:
                         labelDict[label].append(self.userColor)
                     elif label not in labelDict:
                         labelDict[label] = [self.userColor]
+                ## Finally, change the button color accordingly
                 for label in labelDict:
                     idxLabel = self.categories.index(label)
                     if len(labelDict[label]) == 1:
                         self.catButton[idxLabel].config(highlightbackground=labelDict[label][0])
                     else:
                         self.catButton[idxLabel].config(highlightbackground='#3E4149')
-            elif img in self.labeled:
-                label = self.labeled[img]
-                idxLabel = self.categories.index(label)
-                self.catButton[idxLabel].config(highlightbackground=self.userColor)
 
             # Disable back button if on first image
             if self.counter == 0:
@@ -762,8 +765,7 @@ class ImageClassifier(tk.Frame):
         self.display_image()
 
     def sort_conflicting_imgs(self):
-        '''Returns a sub-lists of images: (labeledAgreed, labeledDisagreed, toLabel)'''
-        # TODO: speed up this method ?
+        '''Returns sub-lists of images: (labeledAgreed, labeledDisagreed, toLabel)'''
 
         labeledAgreed = []
         labeledDisagreed = []
