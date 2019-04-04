@@ -40,7 +40,7 @@ class ImageClassifier(tk.Frame):
         This dict is saved to disk by the 'Save' button
     """
 
-    def __init__(self, parent, directory, categories = None, verbose = 0, username = None, autoRefresh = 60, bResetLock = False, *args, **kwargs):
+    def __init__(self, parent, directory, categories = None, verbose = 0, username = None, autoRefresh = 60, bResetLock = False, bRedundant = False, *args, **kwargs):
 
         # Initialize frame
         tk.Frame.__init__(self, parent, *args, **kwargs)
@@ -79,6 +79,9 @@ class ImageClassifier(tk.Frame):
         self.saved = True
         self.reconcileMode = False
         self.reconciledLabelsDict = None
+        self.redundantMode = bRedundant
+        if self.redundantMode:
+            logging.info("Redundant Mode - Other labeler's selections won't be displayed. Reconciliation and Make Master are unavailable.")
 
         # Initialize a refresh timestamp and refresh interval for auto-save and auto-refresh master dict
         self.saveTimestamp = time.time()
@@ -211,6 +214,11 @@ class ImageClassifier(tk.Frame):
         self.masterButton.pack(in_=self.frame0, side = tk.RIGHT)
         self.reconcileButton = tk.Button(self.root, text='Reconcile',  wraplength=80, height=2, width=8, command =self.reconcile)
         self.reconcileButton.pack(in_=self.frame0, side = tk.RIGHT)
+
+        # Disable Reconcile and Make Master in Redundant mode
+        if self.redundantMode:
+            self.reconcileButton.config(state = tk.DISABLED)
+            self.masterButton.config(state = tk.DISABLED)
 
         # Create a textbox for the current image information
         self.infoText = tk.Text(self.root, height=2, width=65, wrap=None)
@@ -490,20 +498,29 @@ class ImageClassifier(tk.Frame):
         self.addCatButton.pack(in_=self.frame2, side = tk.LEFT)
 
     def update_users_displayed(self):
-        ## Print the name of the current user 
-        self.infoText.config(state=tk.NORMAL)
-        self.infoText.delete('2.0', '2.end')
-        self.infoText.insert('2.0', "\nLabelers: ", 'c')
-        self.infoText.insert(tk.END, "{}".format(self.username), ('c', '{}Color'.format(self.username), 'u'))
 
-        ## Print the names of other labelers
-        for user in self.users:
-            if user != self.username:
-                self.infoText.insert(tk.END, ", ", ('c',))
-                self.infoText.insert(tk.END, "{}".format(user), ('c', '{}Color'.format(user)))
+        if self.redundantMode:
+            ## Print the name of the current user 
+            self.infoText.config(state=tk.NORMAL)
+            self.infoText.delete('2.0', '2.end')
+            self.infoText.insert('2.0', "\nRedundant Mode - ", 'c')
+            self.infoText.insert(tk.END, "{}".format(self.username), ('c', '{}Color'.format(self.username), 'u'))
 
-        ## Disable the textbox
-        self.infoText.config(state=tk.DISABLED)
+        else:
+            ## Print the name of the current user 
+            self.infoText.config(state=tk.NORMAL)
+            self.infoText.delete('2.0', '2.end')
+            self.infoText.insert('2.0', "\nLabelers: ", 'c')
+            self.infoText.insert(tk.END, "{}".format(self.username), ('c', '{}Color'.format(self.username), 'u'))
+
+            ## Print the names of other labelers
+            for user in self.users:
+                if user != self.username:
+                    self.infoText.insert(tk.END, ", ", ('c',))
+                    self.infoText.insert(tk.END, "{}".format(user), ('c', '{}Color'.format(user)))
+
+            ## Disable the textbox
+            self.infoText.config(state=tk.DISABLED)
 
     def display_image(self):
         '''Displays the image corresponding to the current value of the counter'''
@@ -642,6 +659,10 @@ class ImageClassifier(tk.Frame):
         logging.debug("update_all_dict - Refreshing master dictionary")
 
         self.allLabeledDict = {}
+
+        # If redundantMode is enabled, do not load other user's dictionaries
+        if self.redundantMode:
+            return
 
         for user in self.users:
             # Current user is treated separately because dict is already loaded and might not exist on disk

@@ -17,6 +17,8 @@ ap.add_argument("-u", "--user", help="Set username for the current session")
 ap.add_argument("--delete-all", action='store_true', help="Deletes any existing data and starts a new labelling task")
 ap.add_argument("--reset-lock", action='store_true', help="Overrides the lock in case of incorrect lockout")
 ap.add_argument("--remove-label", help="Remove a label")
+ap.add_argument("--redundant", action='store_true', help="Redundant mode: do not show other labeler's selections")
+
 
 
 args = ap.parse_args()
@@ -27,6 +29,7 @@ categories = args.labels
 verbosity = 1 if args.verbose else 0
 username = args.user
 bResetLock = args.reset_lock
+bRedundant = args.redundant
 
 # Reset all saved data if requested
 if args.delete_all:
@@ -83,5 +86,5 @@ if args.remove_label:
 
 # Launch the app
 root = tk.Tk() 
-MyApp = simplabel.ImageClassifier(root, rawDirectory, categories = categories, verbose = verbosity, username = username, bResetLock = bResetLock)
+MyApp = simplabel.ImageClassifier(root, rawDirectory, categories = categories, verbose = verbosity, username = username, bResetLock = bResetLock, bRedundant = bRedundant)
 tk.mainloop()
