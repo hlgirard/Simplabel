@@ -864,8 +864,12 @@ class ImageClassifier(tk.Frame):
             pickle.dump(dict, f)
 
     def user_color_helper(self, username):
+        '''Selects a color based on a username in a repeatable way also ensuring there are no conflicting colors if possible'''
         random.seed(a = username)
-        return random.choice(self.colors)
+        color = random.choice(self.colors)
+        while color in self.userColors.values() and (len(self.userColors) <= len(self.colors)):
+            color = random.choice(self.colors)
+        return color
 
     def exit(self):
         '''Cleanly exits the app'''

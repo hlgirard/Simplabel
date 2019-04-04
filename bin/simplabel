@@ -14,9 +14,9 @@ ap.add_argument("-d", "--directory", default=os.getcwd(), help="Path of the dire
 ap.add_argument("-l", "--labels", nargs='+', default=None, help="List of labels")
 ap.add_argument("-v", "--verbose", action='store_true', help="Enable verbose mode")
 ap.add_argument("-u", "--user", help="Set username for the current session")
-ap.add_argument("--delete-all", action='store_true', help="Deletes any existing data and starts a new labelling task")
+ap.add_argument("--delete-all", action='store_true', help="Deletes all files created by simplabel in a directory, this resets the labels and all saved data")
 ap.add_argument("--reset-lock", action='store_true', help="Overrides the lock in case of incorrect lockout")
-ap.add_argument("--remove-label", help="Remove a label")
+ap.add_argument("--remove-label", help="Remove a label from the list")
 ap.add_argument("--redundant", action='store_true', help="Redundant mode: do not show other labeler's selections")
 
 
@@ -32,7 +32,10 @@ bResetLock = args.reset_lock
 bRedundant = args.redundant
 
 def delete_all_files(directory):
+    '''Deletes all files created by simplabel in a directory, this resets the labels and all saved data'''
+
     save_files = [f for f in os.listdir(directory) if (f.endswith('.pkl') and f.startswith('label'))]
+    save_files.extend([f for f in os.listdir(directory) if f.startswith('.') and f.endswith('_lock.txt')])
     if len(save_files) > 0:
         response = input("Are you sure you want to delete all saved files: {}? (y/n)".format(save_files))
         if response == 'y':
