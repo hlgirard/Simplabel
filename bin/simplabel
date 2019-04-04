@@ -3,33 +3,97 @@
 import os
 import argparse
 import tkinter as tk
+import sys
+import pickle
 
 import simplabel
 
 #Setup parser
 ap = argparse.ArgumentParser()
 ap.add_argument("-d", "--directory", default=os.getcwd(), help="Path of the directory")
-ap.add_argument("-c", "--categories", nargs='*', default=None, help="List of categories")
-ap.add_argument("-v", "--verbose", action='store_true', help="Enable verbose mode")
-ap.add_argument("--reset", action='store_true', help="Deletes any existing data and starts a new labelling task")
+ap.add_argument("-l", "--labels", nargs='+', default=None, help="List of labels")
+ap.add_argument("-v", "--verbose", action='count', default=0, help="Enable verbose mode")
+ap.add_argument("-u", "--user", help="Set username for the current session")
+ap.add_argument("-r", "--redundant", action='store_true', help="Redundant mode: do not show other labeler's selections")
+ap.add_argument("--delete-all", action='store_true', help="Deletes all files created by simplabel in a directory, this resets the labels and all saved data")
+ap.add_argument("--reset-lock", action='store_true', help="Overrides the lock in case of incorrect lockout")
+ap.add_argument("--remove-label", help="Remove a label from the list")
+
+
 
 args = ap.parse_args()
 
 # Get the variables from parser
 rawDirectory = args.directory
-categories = args.categories
-verbosity = 1 if args.verbose else 0
+categories = args.labels
+verbosity = args.verbose
+username = args.user
+bResetLock = args.reset_lock
+bRedundant = args.redundant
+
+def delete_all_files(directory):
+    '''Deletes all files created by simplabel in a directory, this resets the labels and all saved data'''
+
+    save_files = [f for f in os.listdir(directory) if (f.endswith('.pkl') and f.startswith('label'))]
+    save_files.extend([f for f in os.listdir(directory) if f.startswith('.') and f.endswith('_lock.txt')])
+    if len(save_files) > 0:
+        response = input("Are you sure you want to delete all saved files: {}? (y/n)".format(save_files))
+        if response == 'y':
+            for f in save_files:
+                os.remove(os.path.join(directory,f))
+            print("Successfully deleted all saved files")
+        else:
+            print("Cancelled deletion, your files are exactly where you left them ;)")
+    else:
+        print("No files found in {}".format(directory))
+    sys.exit(0)
+
+def remove_label(labelName):
+    '''Removes a label from the label file after verifying it isn't in use'''
+
+    labelToRemove = labelName.strip().lower().capitalize()
+
+    # Load the label file to check the presence of the label to remove
+    labelFile = rawDirectory + '/labels.pkl'
+    if os.path.isfile(labelFile):
+        with open(labelFile, 'rb') as f:
+            labels = pickle.load(f)
+        if labelToRemove not in labels:
+            print("No such label in labels.pkl")
+            sys.exit(0)
+    else:
+        print("No label file found.")
+        sys.exit(0)
+    
+    # Get a list of users
+    users = [f.split('_')[1].split('.')[0] for f in os.listdir(rawDirectory) if (f.endswith('.pkl') and f.startswith('labeled_'))]
+
+    # Load each user's dictionary and check for the presense of the label to remove
+    for user in users:
+        dictPath = rawDirectory + "/labeled_" + user +".pkl"
+        with open(dictPath, "rb") as f:
+            userDict = pickle.load(f)
+        if labelToRemove in userDict.values():
+            print("Label {} is used by {}, cannot remove it from the list".format(labelToRemove, user))
+            sys.exit(0)
+
+    # If the check have passed, remove the label from the list and resave the list
+    labels.remove(labelToRemove)
+    with open(labelFile, 'wb') as f:
+        pickle.dump(labels, f)
+    
+    print("Successfully removed label {} from the list".format(labelToRemove))
+    sys.exit(0)
 
 # Reset all saved data if requested
-if args.reset:
-    if os.path.exists(rawDirectory + "/labeled.pkl"):
-        print("Deleting labelling dictionary...")
-        os.remove(rawDirectory + "/labeled.pkl")
-    if os.path.exists(rawDirectory + "/labels.pkl"):
-        print("Deleting label list...")
-        os.remove(rawDirectory + "/labels.pkl")
+if args.delete_all:
+    delete_all_files(rawDirectory)
+
+# Remove label
+if args.remove_label:
+    remove_label(args.remove_label)
 
 # Launch the app
 root = tk.Tk() 
-MyApp = simplabel.ImageClassifier(root, rawDirectory, categories, verbosity)
+MyApp = simplabel.ImageClassifier(root, rawDirectory, categories = categories, verbose = verbosity, username = username, bResetLock = bResetLock, bRedundant = bRedundant)
 tk.mainloop()
