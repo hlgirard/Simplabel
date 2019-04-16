@@ -10,6 +10,7 @@ import sys
 import logging
 import random
 import getpass
+import math
 
 
 class ImageClassifier(tk.Frame):
@@ -60,7 +61,7 @@ class ImageClassifier(tk.Frame):
         self.root.protocol('WM_DELETE_WINDOW', self.exit)
 
         # Supported image file formats (all extensions supported by PIL should work)
-        self.supported_extensions = ['jpg','JPG','png','gif','JPEG','eps','bmp','tiff']
+        self.supported_extensions = ['jpg','JPG','png','gif','hi','eps','bmp','tiff']
 
         # Define colors to be used for users
         self.colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
@@ -204,6 +205,7 @@ class ImageClassifier(tk.Frame):
         self.nextUnlabeledButton = tk.Button(self.root, text='>?', height=2, width=3, wraplength=80, command =self.goto_next_unlabeled)
         self.nextUnlabeledButton.pack(in_=self.frame0, side = tk.LEFT)
         self.buttonOrigColor = self.firstButton.config()['highlightbackground'][-1]
+        self.buttonBgOrigColor = self.firstButton.config()['background'][-1]
         self.lastButton = tk.Button(self.root, text='>>|', height=2, width=3, command =self.goto_last_image)
         self.lastButton.pack(in_=self.frame0, side = tk.LEFT)
 
@@ -405,7 +407,7 @@ class ImageClassifier(tk.Frame):
         self.dump_dict(masterDict, self.folder + '/labeled_master.pkl')
 
         # Change the button color
-        self.masterButton.config(highlightbackground='#3E4149')
+        self.masterButton.config(highlightbackground='#3E4149', bg='#3E4149')
         
     def reconcile(self):
         '''Display images with disagreed labels for reconciliation'''
@@ -434,7 +436,7 @@ class ImageClassifier(tk.Frame):
             self.reconcileMode = True
 
             # Change button text and status
-            self.reconcileButton.config(text = "Back", highlightbackground='#3E4149')
+            self.reconcileButton.config(text = "Back", highlightbackground='#3E4149', bg='#3E4149')
 
             # Rebuild the image list 
             (labeledAgreed, labeledDisagreed, toLabel) = self.sort_conflicting_imgs()
@@ -462,7 +464,7 @@ class ImageClassifier(tk.Frame):
             self.reconcileMode = False
 
             # Change button back
-            self.reconcileButton.config(text = "Reconcile", highlightbackground=self.buttonOrigColor)
+            self.reconcileButton.config(text = "Reconcile", highlightbackground=self.buttonOrigColor, bg=self.buttonBgOrigColor)
 
             # Destroy reconciledLabelsDict
             self.reconciledLabelsDict = None
@@ -544,22 +546,39 @@ class ImageClassifier(tk.Frame):
         else:
             img = self.image_list[self.counter] # Name of current image
             self.im = Image.open("{}{}".format(self.folder + '/', img))
-            if (self.imwidth-self.im.size[0])<(self.imheight-self.im.size[1]):
-                width = self.imwidth
-                height = width*self.im.size[1]/self.im.size[0]
-            else:
-                height = self.imheight
-                width = height*self.im.size[0]/self.im.size[1]
+
+            #Resize the image to fit nicely in the frame
+            if (self.im.size[0] > self.imwidth) or (self.im.size[1] > self.imheight):
+                # If the image is larger than the frame, rescale it to fit
+                if (self.imwidth-self.im.size[0])<(self.imheight-self.im.size[1]):
+                    # Image sticks out more in width than in height, set the width and scale the height
+                    width = self.imwidth
+                    height = width*self.im.size[1]/self.im.size[0]
+                else:
+                    height = self.imheight
+                    width = height*self.im.size[0]/self.im.size[1]
+
+                self.im.thumbnail((width, height), Image.ANTIALIAS)
             
-            self.im.thumbnail((width, height), Image.ANTIALIAS)
+            elif (self.im.size[0] > self.imwidth * 2) and (self.im.size[1] > self.imheight * 2):
+                # If the image is within 50% of the frame size, don't modify it at all
+                pass
+            else:
+                # If the image is very small, resize it up to 2x
+                width = int(self.im.size[0] * 2)
+                height = int(self.im.size[1] * 2)
+
+                self.im.resize((width, height), resample = Image.BICUBIC)
+                
+            
             self.photo = ImageTk.PhotoImage(self.im)
 
             if self.counter == 0:
-                self.cv1.create_image(0, 0, anchor = 'nw', image = self.photo)
+                self.cv1.create_image(self.imwidth // 2, self.imheight // 2, image = self.photo)
 
             else:
                 self.cv1.delete("all")
-                self.cv1.create_image(0, 0, anchor = 'nw', image = self.photo)
+                self.cv1.create_image(self.imwidth // 2, self.imheight // 2, image = self.photo)
 
             # Edit the text information
             self.infoText.config(state=tk.NORMAL)
@@ -568,17 +587,17 @@ class ImageClassifier(tk.Frame):
             self.infoText.config(state=tk.DISABLED)
 
             # Reset all button styles (colors and outline)
-            self.saveButton.config(highlightbackground = self.buttonOrigColor)
-            self.masterButton.config(highlightbackground= self.buttonOrigColor)
+            self.saveButton.config(highlightbackground = self.buttonOrigColor, bg = self.buttonBgOrigColor)
+            self.masterButton.config(highlightbackground= self.buttonOrigColor, bg = self.buttonBgOrigColor)
             for i in range(len(self.catButton)):
-                self.catButton[i].config(highlightbackground = self.buttonOrigColor)
+                self.catButton[i].config(highlightbackground = self.buttonOrigColor, bg = self.buttonBgOrigColor)
 
             # Display the associated label(s) from any user as colored background for the label button
             ## If in reconcileMode, display the chosen label in grey
             if self.reconciledLabelsDict and img in self.reconciledLabelsDict:
                 label = self.reconciledLabelsDict[img]
                 idxLabel = self.categories.index(label)
-                self.catButton[idxLabel].config(highlightbackground='#3E4149')
+                self.catButton[idxLabel].config(highlightbackground='#3E4149', bg = '#3E4149')
             else:
                 labelDict = {}
                 ## In normal mode, check allLabeledDict for other user's labels
@@ -601,9 +620,9 @@ class ImageClassifier(tk.Frame):
                 for label in labelDict:
                     idxLabel = self.categories.index(label)
                     if len(labelDict[label]) == 1:
-                        self.catButton[idxLabel].config(highlightbackground=labelDict[label][0])
+                        self.catButton[idxLabel].config(highlightbackground=labelDict[label][0], bg = labelDict[label][0])
                     else:
-                        self.catButton[idxLabel].config(highlightbackground='#3E4149')
+                        self.catButton[idxLabel].config(highlightbackground='#3E4149', bg = '#3E4149')
 
             # Disable back button if on first image
             if self.counter == 0:
@@ -852,7 +871,7 @@ class ImageClassifier(tk.Frame):
             self.dump_dict(self.labeled, self.savepath)
             logging.info("Saved data to disk")
 
-        self.saveButton.config(highlightbackground='#3E4149')
+        self.saveButton.config(highlightbackground='#3E4149', bg = '#3E4149')
         self.saved = True
     
     def load_dict(self, file):
@@ -928,7 +947,6 @@ class FsLock(object):
 
     def is_locked(self):
         return open(self.filename, 'r').read() == 'locked'
-
 
 if __name__ == "__main__":
     root = tk.Tk() 
