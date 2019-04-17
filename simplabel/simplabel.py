@@ -61,7 +61,7 @@ class ImageClassifier(tk.Frame):
         self.root.protocol('WM_DELETE_WINDOW', self.exit)
 
         # Supported image file formats (all extensions supported by PIL should work)
-        self.supported_extensions = ['jpg','JPG','png','gif','hi','eps','bmp','tiff']
+        self.supported_extensions = ['jpg','png','gif','jpeg ','eps','bmp','tiff','bmp','icns','ico','spi',]
 
         # Define colors to be used for users
         self.colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
@@ -291,7 +291,7 @@ class ImageClassifier(tk.Frame):
         self.image_list = []
 
         ## If the directory contains at least 1 image, process only this directory
-        list_image_files = [d for d in os.listdir(self.folder) if d.split('.')[-1] in self.supported_extensions]
+        list_image_files = [d for d in os.listdir(self.folder) if d.split('.')[-1].lower() in self.supported_extensions]
         if len(list_image_files) > 0:
             labeledByCurrentUser = []
             labeledByOtherUser = []
@@ -312,7 +312,7 @@ class ImageClassifier(tk.Frame):
             sub_folder_list = [dirName for dirName in next(os.walk(self.folder))[1] if not dirName.startswith('.')]
             for dirName in sub_folder_list:
                 dir_path = os.path.join(self.folder, dirName)
-                list_image_files = [d for d in os.listdir(dir_path) if d.split('.')[-1] in self.supported_extensions]
+                list_image_files = [d for d in os.listdir(dir_path) if d.split('.')[-1].lower() in self.supported_extensions]
                 for img in list_image_files:
                     imgPath = dirName + '/' + img
                     if imgPath in self.labeled:
