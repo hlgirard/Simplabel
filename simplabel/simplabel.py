@@ -70,6 +70,7 @@ class ImageClassifier(tk.Frame):
         self.winwidth = 1000
         self.imwidth = self.winwidth - 10
         self.imheight = int(self.imwidth // 1.5)
+        self.root.geometry("{}x{}".format(self.winwidth, self.imheight+80))
 
         #  Directory containing the raw images
         self.folder = directory
@@ -172,21 +173,28 @@ class ImageClassifier(tk.Frame):
     ### Initializing methods #####
     ##############################
 
+    def responsiveCanvas(self, event):
+        logging.debug("Redrawing frame1 following a size change event. New size: {}".format((event.width, event.height)))
+        self.imwidth = event.width
+        self.imheight = event.height
+        self.display_image()
+
     def initialize_ui(self):
         '''Initialize UI with buttons and canvas for image'''
 
         # Make a frame for navigation buttons (at the top of the window)
-        self.frame0 = tk.Frame(self.root, width=self.winwidth, height=24, bd=2)
-        self.frame0.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.frame0 = tk.Frame(self.root, height=10, bd=2)
+        self.frame0.pack(side=tk.TOP, fill=tk.X)
 
         # Make a frame to display the image
-        self.frame1 = tk.Frame(self.root, width=self.winwidth, height=self.imheight+10, bd=2)
-        self.frame1.pack(side=tk.TOP)
+        self.frame1 = tk.Frame(self.root, highlightthickness=0)
+        self.frame1.pack(side=tk.TOP, fill=tk.BOTH, expand=tk.YES)
+        self.frame1.bind("<Configure>", self.responsiveCanvas)
 
         # Create a canvas for the image
-        self.cv1 = tk.Canvas(self.frame1, width=self.imwidth, height=self.imheight, background="white", bd=1, relief=tk.RAISED)
-        self.cv1.pack(in_=self.frame1)
-
+        self.cv1 = tk.Canvas(self.frame1, background="white", relief=tk.RAISED, highlightthickness=0)
+        self.cv1.pack(in_=self.frame1, fill=tk.BOTH, expand=tk.YES)
+        
         # Placeholder for the label button frame 
         self.labelFrameList = None
 
@@ -493,8 +501,8 @@ class ImageClassifier(tk.Frame):
 
         # Make frames to display the labelling buttons (at the bottom)
         for i in range(n_rows):
-            self.labelFrameList.append(tk.Frame(self.root, width=self.winwidth, height=10, bd=2))
-            self.labelFrameList[i].pack(side = tk.BOTTOM, fill=tk.BOTH, expand=True)
+            self.labelFrameList.append(tk.Frame(self.root, height=10, bd=2))
+            self.labelFrameList[i].pack(side = tk.BOTTOM, fill=tk.X)
 
         # Create and pack a button for each label
         self.catButton = []
@@ -550,7 +558,7 @@ class ImageClassifier(tk.Frame):
             #Resize the image to fit nicely in the frame
             if (self.im.size[0] > self.imwidth) or (self.im.size[1] > self.imheight):
                 # If the image is larger than the frame, rescale it to fit
-                if (self.imwidth-self.im.size[0])<(self.imheight-self.im.size[1]):
+                if (self.imwidth / self.imheight) < (self.im.size[0] / self.im.size[1]):
                     # Image sticks out more in width than in height, set the width and scale the height
                     width = self.imwidth
                     height = width*self.im.size[1]/self.im.size[0]
@@ -560,7 +568,7 @@ class ImageClassifier(tk.Frame):
 
                 self.im.thumbnail((width, height), Image.ANTIALIAS)
             
-            elif (self.im.size[0] > self.imwidth * 2) and (self.im.size[1] > self.imheight * 2):
+            elif (self.im.size[0] * 2 > self.imwidth) and (self.im.size[1] * 2 > self.imheight):
                 # If the image is within 50% of the frame size, don't modify it at all
                 pass
             else:
