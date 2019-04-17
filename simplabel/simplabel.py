@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter.messagebox import askquestion, askokcancel, showwarning
-from tkinter import simpledialog
+from tkinter import simpledialog, filedialog
 from PIL import Image,ImageTk
 import os
 from functools import partial
@@ -43,7 +43,7 @@ class ImageClassifier(tk.Frame):
         This dict is saved to disk by the 'Save' button
     """
 
-    def __init__(self, parent, directory, categories = None, verbose = 0, username = None, autoRefresh = 60, bResetLock = False, bRedundant = False, *args, **kwargs):
+    def __init__(self, parent, directory = None, categories = None, verbose = 0, username = None, autoRefresh = 60, bResetLock = False, bRedundant = False, *args, **kwargs):
 
         # Initialize frame
         tk.Frame.__init__(self, parent, *args, **kwargs)
@@ -73,7 +73,11 @@ class ImageClassifier(tk.Frame):
         self.root.geometry("{}x{}".format(self.winwidth, self.imheight+80))
 
         #  Directory containing the raw images
-        self.folder = directory
+        if directory:
+            self.folder = directory
+        else:
+            logging.info("No directory passed. Please select a directory...")
+            self.folder = filedialog.askdirectory(title = "Select image directory", initialdir=os.getcwd(), mustexist = True)
 
         # Directory containing the labels
         self.labelpath = self.folder + "/labels.pkl"
@@ -173,12 +177,6 @@ class ImageClassifier(tk.Frame):
     ### Initializing methods #####
     ##############################
 
-    def responsiveCanvas(self, event):
-        logging.debug("Redrawing frame1 following a size change event. New size: {}".format((event.width, event.height)))
-        self.imwidth = event.width
-        self.imheight = event.height
-        self.display_image()
-
     def initialize_ui(self):
         '''Initialize UI with buttons and canvas for image'''
 
@@ -269,10 +267,9 @@ class ImageClassifier(tk.Frame):
                 with open(self.labelpath,'wb') as f:
                     pickle.dump(self.categories, f)
         
-        # If no file and no categories passed, warn and exit
+        # If no file and no categories passed, leave categories as an empty list
         else:
-            logging.warning("No labels provided. Use '-l label1 label2 ...' to add them. Exiting.")
-            self.errorClose()
+            self.categories = []
 
     def initialize_data(self):
         '''Loads existing data from disk if it exists and loads a list of unlabelled images found in the directory'''
@@ -495,24 +492,37 @@ class ImageClassifier(tk.Frame):
             for frame in self.labelFrameList:
                 frame.destroy()
 
-        n_labels = len(self.categories)
-        n_rows = (n_labels-1) // 5 + 1 # Each row can contain up to 4 labels
-        self.labelFrameList = []
-
-        # Make frames to display the labelling buttons (at the bottom)
-        for i in range(n_rows):
-            self.labelFrameList.append(tk.Frame(self.root, height=10, bd=2))
-            self.labelFrameList[i].pack(side = tk.BOTTOM, fill=tk.X)
-
-        # Create and pack a button for each label
-        self.catButton = []
-        for idx, category in enumerate(self.categories):
-            txt = category + " ({})".format(idx+1)
-            self.catButton.append(tk.Button(self.root, text=txt, height=2, width=8, command = partial(self.classify, category)))
-            self.catButton[idx].pack(in_=self.labelFrameList[idx//4], fill = tk.X, expand = True, side = tk.LEFT)
+        # Create frames to pack the label buttons
+        if self.categories:
+            n_labels = len(self.categories)
+            n_rows = (n_labels-1) // 5 + 1 # Each row can contain up to 4 labels
         
-        self.addCatButton = tk.Button(self.root, text='+', height=2, width=3, command = self.add_label)
-        self.addCatButton.pack(in_=self.labelFrameList[-1], side = tk.LEFT)
+            self.labelFrameList = []
+
+            # Make frames to display the labelling buttons (at the bottom)
+            for i in range(n_rows):
+                self.labelFrameList.append(tk.Frame(self.root, height=10, bd=2))
+                self.labelFrameList[i].pack(side = tk.BOTTOM, fill=tk.X)
+
+            # Create and pack a button for each label
+            self.catButton = []
+            for idx, category in enumerate(self.categories):
+                txt = category + " ({})".format(idx+1)
+                self.catButton.append(tk.Button(self.root, text=txt, height=2, width=8, command = partial(self.classify, category)))
+                self.catButton[idx].pack(in_=self.labelFrameList[idx//4], fill = tk.X, expand = True, side = tk.LEFT)
+
+            self.addCatButton = tk.Button(self.root, text='+', height=2, width=3, command = self.add_label)
+            self.addCatButton.pack(in_=self.labelFrameList[-1], side = tk.LEFT)
+
+        # When there are no labels yet, create a single frame to pack the "+" button in
+        else:
+            self.catButton = [] # Initialize an empty list
+            self.labelFrameList = [tk.Frame(self.root, height=10, bd=2)]
+            self.labelFrameList[0].pack(side = tk.BOTTOM, fill=tk.X)
+
+            self.addCatButton = tk.Button(self.root, text='+', height=2, width=3, command = self.add_label)
+            self.addCatButton.pack(in_=self.labelFrameList[-1], side = tk.LEFT, fill=tk.X, expand=tk.YES)
+        
 
     def update_users_displayed(self):
 
@@ -597,8 +607,9 @@ class ImageClassifier(tk.Frame):
             # Reset all button styles (colors and outline)
             self.saveButton.config(highlightbackground = self.buttonOrigColor, bg = self.buttonBgOrigColor)
             self.masterButton.config(highlightbackground= self.buttonOrigColor, bg = self.buttonBgOrigColor)
-            for i in range(len(self.catButton)):
-                self.catButton[i].config(highlightbackground = self.buttonOrigColor, bg = self.buttonBgOrigColor)
+            if self.catButton:
+                for i in range(len(self.catButton)):
+                    self.catButton[i].config(highlightbackground = self.buttonOrigColor, bg = self.buttonBgOrigColor)
 
             # Display the associated label(s) from any user as colored background for the label button
             ## If in reconcileMode, display the chosen label in grey
@@ -653,6 +664,12 @@ class ImageClassifier(tk.Frame):
                 logging.debug("display_image - Auto-save triggered")
                 self.saveTimestamp = time.time()
                 self.save()
+
+    def responsiveCanvas(self, event):
+        logging.debug("Redrawing frame1 following a size change event. New size: {}".format((event.width, event.height)))
+        self.imwidth = event.width
+        self.imheight = event.height
+        self.display_image()
 
     ##############################
     ### Helper functions #########

@@ -1,0 +1,15 @@
+#!/usr/bin/env python
+
+import os
+import argparse
+import tkinter as tk
+import sys
+import pickle
+
+import simplabel
+
+
+# Launch the app
+root = tk.Tk() 
+MyApp = simplabel.ImageClassifier(root)
+tk.mainloop()
