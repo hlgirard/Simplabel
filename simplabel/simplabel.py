@@ -62,10 +62,35 @@ class ImageClassifier(tk.Frame):
         self.gotLock = False
 
         # Supported image file formats (all extensions supported by PIL should work)
-        self.supported_extensions = ['jpg','png','gif','jpeg ','eps','bmp','tiff','bmp','icns','ico','spi',]
+        self.supported_extensions = ['jpg','png','gif','jpeg ','eps','bmp','tiff','bmp','icns','ico','spi']
 
-        # Define colors to be used for users
-        self.colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+        #####################
+        ###### STYLING ######
+        #####################
+
+        # Define colors to be used in the app
+        self.userColorList = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+        self.primaryColor = '#25a59a'
+        self.lightColor = '#63d7cb'
+        self.darkColor = '#00756c'
+        self.textOnPrimaryColor = '#000000'
+        self.textOnDarkColor = '#ffffff'
+        
+
+        # Define the fonts used in the app
+        self.titleFont = ('arial', 18)
+        self.infoFont = ('arial', 14)
+        self.buttonFont = ('arial', 13)
+
+        # Define the button properties
+        self.buttonOrigColor = self.primaryColor
+        self.buttonBgOrigColor = self.primaryColor
+        self.buttonActiveColor = self.darkColor
+        self.disabledButtonTextColor = '#616161'
+        self.buttonSmallPadding = 1
+        self.buttonNormalPadding = 2
+
+
 
         # Window Dimensions
         self.winwidth = 1000
@@ -110,7 +135,7 @@ class ImageClassifier(tk.Frame):
         self.userColors = {}
         for user in self.users:
             self.userColors[user] = self.user_color_helper(user)
-        self.userColors['master'] = '#3E4149'
+        self.userColors['master'] = self.buttonActiveColor
 
         # Set the username for the current session
         if isinstance(username, str):
@@ -174,6 +199,8 @@ class ImageClassifier(tk.Frame):
 
         # Create a button for each of the categories
         self.draw_label_buttons()
+        self.labelButtonOrigColor = self.addCatButton.config()['highlightbackground'][-1]
+        self.labelButtonBgOrigColor = self.addCatButton.config()['background'][-1]
         
         # Display the first image
         self.display_image()
@@ -185,8 +212,22 @@ class ImageClassifier(tk.Frame):
     def initialize_ui(self):
         '''Initialize UI with buttons and canvas for image'''
 
+        # Make a title frame at the top of the window
+        self.titleFrame = tk.Frame(self.root, height = 20, bd = 2, bg = self.darkColor)
+        self.titleFrame.pack(side=tk.TOP, fill=tk.X)
+
+        # Create a textbox for the current image information
+        self.TitleText = tk.Text(self.root, height=1, width=65, wrap=None, background = self.darkColor, highlightthickness=0)
+        self.TitleText.pack(in_=self.titleFrame)
+        self.TitleText.configure(font=self.titleFont)
+        self.TitleText.tag_config("titleTag", justify=tk.CENTER, foreground = self.textOnDarkColor)
+
+        self.TitleText.delete('1.0', '1.end')
+        self.TitleText.insert('1.0', "SimpLabel", 'titleTag')
+        self.TitleText.config(state=tk.DISABLED)
+
         # Make a frame for navigation buttons (at the top of the window)
-        self.frame0 = tk.Frame(self.root, height=10, bd=2)
+        self.frame0 = tk.Frame(self.root, height=10, bd=2, bg = self.lightColor)
         self.frame0.pack(side=tk.TOP, fill=tk.X)
 
         # Make a frame to display the image
@@ -207,27 +248,53 @@ class ImageClassifier(tk.Frame):
         self.root.bind("<Right>", self.next_image)
 
         # Create the navigation buttons
-        self.firstButton = tk.Button(self.root, text='|<<', height=2, width=3, command =self.goto_first_image)
-        self.firstButton.pack(in_=self.frame0, side = tk.LEFT)
-        self.prevButton = tk.Button(self.root, text='<', height=2, width=3, command =self.previous_image)
-        self.prevButton.pack(in_=self.frame0, side = tk.LEFT)
-        self.nextButton = tk.Button(self.root, text='>', height=2, width=3, command =self.next_image)
-        self.nextButton.pack(in_=self.frame0, side = tk.LEFT)
-        self.nextUnlabeledButton = tk.Button(self.root, text='>?', height=2, width=3, wraplength=80, command =self.goto_next_unlabeled)
-        self.nextUnlabeledButton.pack(in_=self.frame0, side = tk.LEFT)
-        self.buttonOrigColor = self.firstButton.config()['highlightbackground'][-1]
-        self.buttonBgOrigColor = self.firstButton.config()['background'][-1]
-        self.lastButton = tk.Button(self.root, text='>>|', height=2, width=3, command =self.goto_last_image)
-        self.lastButton.pack(in_=self.frame0, side = tk.LEFT)
+        self.firstButton = tk.Button(self.root, text='|<<', height=2, width=3, command =self.goto_first_image, bd = 0, bg = self.primaryColor, \
+             highlightbackground = self.primaryColor, activebackground = self.darkColor, foreground = self.textOnPrimaryColor, \
+             activeforeground = self.textOnDarkColor, disabledforeground = self.disabledButtonTextColor, font = self.buttonFont, \
+             highlightthickness=0, borderwidth = 0, relief = tk.FLAT)
+        self.firstButton.pack(in_=self.frame0, side = tk.LEFT, padx=self.buttonSmallPadding)
+        self.prevButton = tk.Button(self.root, text='<', height=2, width=3, command =self.previous_image, bd = 0, bg = self.primaryColor, \
+             highlightbackground = self.primaryColor, activebackground = self.darkColor, foreground = self.textOnPrimaryColor, \
+             activeforeground = self.textOnDarkColor, disabledforeground = self.disabledButtonTextColor, font = self.buttonFont, \
+             highlightthickness=0, borderwidth = 0, relief = tk.FLAT)
+        self.prevButton.pack(in_=self.frame0, side = tk.LEFT, padx=self.buttonSmallPadding)
+        self.nextButton = tk.Button(self.root, text='>', height=2, width=3, command =self.next_image, bd = 0, bg = self.primaryColor, \
+             highlightbackground = self.primaryColor, activebackground = self.darkColor, foreground = self.textOnPrimaryColor, \
+             activeforeground = self.textOnDarkColor, disabledforeground = self.disabledButtonTextColor, font = self.buttonFont, \
+             highlightthickness=0, borderwidth = 0, relief = tk.FLAT)
+        self.nextButton.pack(in_=self.frame0, side = tk.LEFT, padx=self.buttonSmallPadding)
+        self.nextUnlabeledButton = tk.Button(self.root, text='>?', height=2, width=3, wraplength=80, command =self.goto_next_unlabeled, bd = 0, bg = self.primaryColor, \
+             highlightbackground = self.primaryColor, activebackground = self.darkColor, foreground = self.textOnPrimaryColor, \
+             activeforeground = self.textOnDarkColor, disabledforeground = self.disabledButtonTextColor, font = self.buttonFont, \
+             highlightthickness=0, borderwidth = 0, relief = tk.FLAT)
+        self.nextUnlabeledButton.pack(in_=self.frame0, side = tk.LEFT, padx=self.buttonSmallPadding)
+        self.lastButton = tk.Button(self.root, text='>>|', height=2, width=3, command =self.goto_last_image, bd = 0, bg = self.primaryColor, \
+             highlightbackground = self.primaryColor, activebackground = self.darkColor, foreground = self.textOnPrimaryColor, \
+             activeforeground = self.textOnDarkColor, disabledforeground = self.disabledButtonTextColor, font = self.buttonFont, \
+             highlightthickness=0, borderwidth = 0, relief = tk.FLAT)
+        self.lastButton.pack(in_=self.frame0, side = tk.LEFT, padx=self.buttonSmallPadding)
 
         # Create the user action buttons
-        self.saveButton = tk.Button(self.root, text='Save', height=2, width=8, command =self.save)
-        self.saveButton.pack(in_=self.frame0, side = tk.LEFT)
-        tk.Button(self.root, text='Exit', height=2, width=8, command =self.exit).pack(in_=self.frame0, side = tk.RIGHT)
-        self.masterButton = tk.Button(self.root, text='Make Master', height=2,  wraplength=80, width=8, command =self.make_master)
-        self.masterButton.pack(in_=self.frame0, side = tk.RIGHT)
-        self.reconcileButton = tk.Button(self.root, text='Reconcile',  wraplength=80, height=2, width=8, command =self.reconcile)
-        self.reconcileButton.pack(in_=self.frame0, side = tk.RIGHT)
+        self.saveButton = tk.Button(self.root, text='Save', height=2, width=8, command =self.save, underline = 0, bd = 0, bg = self.primaryColor, \
+             highlightbackground = self.primaryColor, activebackground = self.darkColor, foreground = self.textOnPrimaryColor, \
+             activeforeground = self.textOnDarkColor, disabledforeground = self.disabledButtonTextColor, font = self.buttonFont, \
+             highlightthickness=0, borderwidth = 0, relief = tk.FLAT)
+        self.saveButton.pack(in_=self.frame0, side = tk.LEFT, padx=self.buttonNormalPadding)
+        self.exitButton = tk.Button(self.root, text='Exit', height=2, width=8, command = self.exit, bd = 0, bg = self.primaryColor, \
+             highlightbackground = self.primaryColor, activebackground = self.darkColor, foreground = self.textOnPrimaryColor, \
+             activeforeground = self.textOnDarkColor, disabledforeground = self.disabledButtonTextColor, font = self.buttonFont, \
+             highlightthickness=0, borderwidth = 0, relief = tk.FLAT)
+        self.exitButton.pack(in_=self.frame0, side = tk.RIGHT, padx=self.buttonNormalPadding)
+        self.masterButton = tk.Button(self.root, text='Make Master', height=2,  wraplength=50, width=8, command =self.make_master, bd = 0, bg = self.primaryColor, \
+             highlightbackground = self.primaryColor, activebackground = self.darkColor, foreground = self.textOnPrimaryColor, \
+             activeforeground = self.textOnDarkColor, disabledforeground = self.disabledButtonTextColor, font = self.buttonFont, \
+             highlightthickness=0, borderwidth = 0, relief = tk.FLAT)
+        self.masterButton.pack(in_=self.frame0, side = tk.RIGHT, padx=self.buttonNormalPadding)
+        self.reconcileButton = tk.Button(self.root, text='Reconcile',  wraplength=80, height=2, width=8, command =self.reconcile, bd = 0, bg = self.primaryColor, \
+             highlightbackground = self.primaryColor, activebackground = self.darkColor, foreground = self.textOnPrimaryColor, \
+             activeforeground = self.textOnDarkColor, disabledforeground = self.disabledButtonTextColor, font = self.buttonFont, \
+             highlightthickness=0, borderwidth = 0, relief = tk.FLAT)
+        self.reconcileButton.pack(in_=self.frame0, side = tk.RIGHT, padx=self.buttonNormalPadding)
 
         # Disable Reconcile and Make Master in Redundant mode
         if self.redundantMode:
@@ -235,8 +302,9 @@ class ImageClassifier(tk.Frame):
             self.masterButton.config(state = tk.DISABLED)
 
         # Create a textbox for the current image information
-        self.infoText = tk.Text(self.root, height=2, width=65, wrap=None)
+        self.infoText = tk.Text(self.root, height=2, width=65, wrap=None, background = self.lightColor, highlightthickness=0)
         self.infoText.pack(in_=self.frame0)
+        self.infoText.config(font=self.infoFont)
         self.infoText.tag_config("c", justify=tk.CENTER)
         self.infoText.tag_config("r", foreground="#8B0000")
         self.infoText.tag_config("u", underline=1, foreground = self.userColor)
@@ -417,7 +485,7 @@ class ImageClassifier(tk.Frame):
         self.dump_dict(masterDict, self.folder + '/labeled_master.pkl')
 
         # Change the button color
-        self.masterButton.config(highlightbackground='#3E4149', bg='#3E4149')
+        self.masterButton.config(highlightbackground=self.buttonActiveColor, bg=self.buttonActiveColor)
         
     def reconcile(self):
         '''Display images with disagreed labels for reconciliation'''
@@ -446,7 +514,7 @@ class ImageClassifier(tk.Frame):
             self.reconcileMode = True
 
             # Change button text and status
-            self.reconcileButton.config(text = "Back", highlightbackground='#3E4149', bg='#3E4149')
+            self.reconcileButton.config(text = "Back", highlightbackground=self.buttonActiveColor, bg=self.buttonActiveColor)
 
             # Rebuild the image list 
             (labeledAgreed, labeledDisagreed, toLabel) = self.sort_conflicting_imgs()
@@ -513,10 +581,10 @@ class ImageClassifier(tk.Frame):
             self.catButton = []
             for idx, category in enumerate(self.categories):
                 txt = category + " ({})".format(idx+1)
-                self.catButton.append(tk.Button(self.root, text=txt, height=2, width=8, command = partial(self.classify, category)))
+                self.catButton.append(tk.Button(self.root, text=txt, height=2, width=8, command = partial(self.classify, category), font = self.buttonFont))
                 self.catButton[idx].pack(in_=self.labelFrameList[idx//4], fill = tk.X, expand = True, side = tk.LEFT)
 
-            self.addCatButton = tk.Button(self.root, text='+', height=2, width=3, command = self.add_label)
+            self.addCatButton = tk.Button(self.root, text='+', height=2, width=3, command = self.add_label, font = self.buttonFont)
             self.addCatButton.pack(in_=self.labelFrameList[-1], side = tk.LEFT)
 
         # When there are no labels yet, create a single frame to pack the "+" button in
@@ -525,10 +593,9 @@ class ImageClassifier(tk.Frame):
             self.labelFrameList = [tk.Frame(self.root, height=10, bd=2)]
             self.labelFrameList[0].pack(side = tk.BOTTOM, fill=tk.X)
 
-            self.addCatButton = tk.Button(self.root, text='+', height=2, width=3, command = self.add_label)
+            self.addCatButton = tk.Button(self.root, text='+', height=2, width=3, command = self.add_label, font = self.buttonFont)
             self.addCatButton.pack(in_=self.labelFrameList[-1], side = tk.LEFT, fill=tk.X, expand=tk.YES)
         
-
     def update_users_displayed(self):
 
         if self.redundantMode:
@@ -614,14 +681,14 @@ class ImageClassifier(tk.Frame):
             self.masterButton.config(highlightbackground= self.buttonOrigColor, bg = self.buttonBgOrigColor)
             if self.catButton:
                 for i in range(len(self.catButton)):
-                    self.catButton[i].config(highlightbackground = self.buttonOrigColor, bg = self.buttonBgOrigColor)
+                    self.catButton[i].config(highlightbackground = self.labelButtonOrigColor, bg = self.labelButtonBgOrigColor)
 
             # Display the associated label(s) from any user as colored background for the label button
             ## If in reconcileMode, display the chosen label in grey
             if self.reconciledLabelsDict and img in self.reconciledLabelsDict:
                 label = self.reconciledLabelsDict[img]
                 idxLabel = self.categories.index(label)
-                self.catButton[idxLabel].config(highlightbackground='#3E4149', bg = '#3E4149')
+                self.catButton[idxLabel].config(highlightbackground=self.buttonActiveColor, bg = self.buttonActiveColor)
             else:
                 labelDict = {}
                 ## In normal mode, check allLabeledDict for other user's labels
@@ -646,7 +713,7 @@ class ImageClassifier(tk.Frame):
                     if len(labelDict[label]) == 1:
                         self.catButton[idxLabel].config(highlightbackground=labelDict[label][0], bg = labelDict[label][0])
                     else:
-                        self.catButton[idxLabel].config(highlightbackground='#3E4149', bg = '#3E4149')
+                        self.catButton[idxLabel].config(highlightbackground=self.buttonActiveColor, bg = self.buttonActiveColor)
 
             # Disable back button if on first image
             if self.counter == 0:
@@ -901,7 +968,7 @@ class ImageClassifier(tk.Frame):
             self.dump_dict(self.labeled, self.savepath)
             logging.info("Saved data to disk")
 
-        self.saveButton.config(highlightbackground='#3E4149', bg = '#3E4149')
+        self.saveButton.config(highlightbackground=self.buttonActiveColor, bg = self.buttonActiveColor)
         self.saved = True
     
     def load_dict(self, file):
@@ -917,9 +984,9 @@ class ImageClassifier(tk.Frame):
     def user_color_helper(self, username):
         '''Selects a color based on a username in a repeatable way also ensuring there are no conflicting colors if possible'''
         random.seed(a = username)
-        color = random.choice(self.colors)
-        while color in self.userColors.values() and (len(self.userColors) <= len(self.colors)):
-            color = random.choice(self.colors)
+        color = random.choice(self.userColorList)
+        while color in self.userColors.values() and (len(self.userColors) <= len(self.userColorList)):
+            color = random.choice(self.userColorList)
         return color
 
     def exit(self):
