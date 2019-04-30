@@ -528,7 +528,6 @@ class ImageClassifier(tk.Frame):
             self.addCatButton = tk.Button(self.root, text='+', height=2, width=3, command = self.add_label)
             self.addCatButton.pack(in_=self.labelFrameList[-1], side = tk.LEFT, fill=tk.X, expand=tk.YES)
         
-
     def update_users_displayed(self):
 
         if self.redundantMode:
