@@ -1,7 +1,6 @@
 import unittest
 
 import os
-import pickle
 import tkinter
 import _tkinter
 
@@ -57,37 +56,37 @@ class TestMultiUser(unittest.TestCase):
             self.pump_events(self.root1)
 
         # User 2 opens a new window
-        self.root2 = tkinter.Tk()
-        self.pump_events(self.root2)
-        self.classifier2 = ImageClassifier(self.root2, directory=self.test_folder, username="testuser2")
+        root2 = tkinter.Tk()
+        self.pump_events(root2)
+        classifier2 = ImageClassifier(root2, directory=self.test_folder, username="testuser2")
 
         # Check that user1 is detected
-        self.assertIn("testuser1", self.classifier2.users)
+        self.assertIn("testuser1", classifier2.users)
 
         # Check that user1's label is detected
-        self.assertIn(imgName, self.classifier2.allLabeledDict)
+        self.assertIn(imgName, classifier2.allLabeledDict)
 
         # Check that the initial counter is 1 (image 0 is already labeled)
-        self.assertEqual(self.classifier2.counter, 1)
+        self.assertEqual(classifier2.counter, 1)
 
         # Check that the first image in the list is the one labeled by user 1
-        self.assertEqual(self.classifier2.image_list[0], imgName)
+        self.assertEqual(classifier2.image_list[0], imgName)
 
         # Check that the color of user1 is displayed on the button corresponding to the label
-        self.classifier2.firstButton.invoke() # Go to the first image (labeled by user1)
-        self.assertEqual(self.classifier2.catButton[0].config()['highlightbackground'][-1], self.classifier2.userColors["testuser1"])
-        self.assertEqual(self.classifier2.catButton[0].config()['background'][-1], self.classifier2.userColors["testuser1"])
+        classifier2.firstButton.invoke() # Go to the first image (labeled by user1)
+        self.assertEqual(classifier2.catButton[0].config()['highlightbackground'][-1], classifier2.userColors["testuser1"])
+        self.assertEqual(classifier2.catButton[0].config()['background'][-1], classifier2.userColors["testuser1"])
 
         # Check that an image labeled by both users shows as dark grey
-        self.classifier2.catButton[0].invoke() # Label this image with user2 as well
-        self.classifier2.firstButton.invoke()
-        self.assertEqual(self.classifier2.catButton[0].config()['highlightbackground'][-1], '#3E4149')
-        self.assertEqual(self.classifier2.catButton[0].config()['background'][-1], '#3E4149')
+        classifier2.catButton[0].invoke() # Label this image with user2 as well
+        classifier2.firstButton.invoke()
+        self.assertEqual(classifier2.catButton[0].config()['highlightbackground'][-1], '#3E4149')
+        self.assertEqual(classifier2.catButton[0].config()['background'][-1], '#3E4149')
 
         # User 2 closes the window
-        if self.classifier2.gotLock:
-            self.classifier2.lock.release()
-        if self.root2:
-            self.root2.destroy()
-            self.pump_events(self.root1)
+        if classifier2.gotLock:
+            classifier2.lock.release()
+        if root2:
+            root2.destroy()
+            self.pump_events(root2)
 
