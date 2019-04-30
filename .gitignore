@@ -46,7 +46,6 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
-settings.json
 
 # Translations
 *.mo
@@ -109,3 +108,6 @@ venv.bak/
 
 # Lock can expose username
 /tests/test_images/.*.txt
+
+# VS Code
+.vscode

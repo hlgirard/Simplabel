@@ -975,7 +975,8 @@ class FsLock(object):
             f.write('unlocked')
 
     def is_locked(self):
-        return open(self.filename, 'r').read() == 'locked'
+        with open(self.filename, 'r') as f:
+            return f.read() == 'locked'
 
 if __name__ == "__main__":
     root = tk.Tk() 
