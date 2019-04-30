@@ -94,3 +94,13 @@ categories = ['dog', 'cat', 'bird']
 MyApp = ImageClassifier(root, directory, categories)
 tk.mainloop()
 ```
+
+## License
+
+This project is licensed under the GPLv3 License - see the [LICENSE.md](LICENSE.md) file for details.
+
+## Acknowledgements
+
+Testing of tkinter GUI is based on ivan_pozdeev's answer at Stackoverflow:
+
+https://stackoverflow.com/questions/4083796/how-do-i-run-unittest-on-a-tkinter-app
