@@ -1,6 +1,5 @@
 # Simplabel
 [![PyPI version](https://badge.fury.io/py/simplabel.svg)](https://badge.fury.io/py/simplabel)
-
 ![Travis CI status](https://travis-ci.com/hlgirard/Simplabel.svg?branch=master)
 
 Graphical tool to manually label images in distinct categories to build training datasets.
