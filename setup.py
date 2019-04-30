@@ -18,6 +18,7 @@ setup(name='simplabel',
       ],
       scripts=[
           'bin/simplabel',
+          'bin/simplabel_noarg',
           'bin/flow_to_directory'
       ],
       zip_safe=False)
