@@ -140,17 +140,17 @@ class ImageClassifier(tk.Frame):
         # Set the username for the current session
         if isinstance(username, str):
             # Sanitize: lowercase and remove spaces
-            sanName = ''.join(username.strip().lower().split())
+            sanName = self.sanitize_user_name(username)
             # Check that username is not reserved
             if sanName == 'master':
                 logging.error("Username 'master' is reserved.")
                 newName = input("Please choose another name: ")
-                sanName = ''.join(newName.strip().lower().split())
+                sanName = self.sanitize_user_name(newName)
             self.username = sanName
             logging.info("Username: {}".format(self.username))
         else:
             try:
-                username = ''.join(getpass.getuser().strip().lower().split())
+                username = self.sanitize_user_name(getpass.getuser())
                 logging.info("No username passed, using system username: {}".format(username))
             except:
                 username = "guest"
@@ -324,14 +324,18 @@ class ImageClassifier(tk.Frame):
             if self.categories:
                 logging.warning("Found label file, ignoring labels passed as argument.")
             with open(self.labelpath, 'rb') as f:
-                self.categories = pickle.load(f)
+                loadedLabels = pickle.load(f)
+            # Sanitize loaded labels
+            sanLabels = [self.sanitize_label_name(label) for label in loadedLabels]
+            # Remove duplicates
+            self.categories = list(dict.fromkeys(sanLabels))
             logging.info("Loaded labels from file: {}".format(self.categories))
         
         # If no file is found and there are passed arguments, sanitize and use them
         elif self.categories:
             sanCategories = []
             for category in self.categories:
-                sanCategories.append(category.strip().lower().capitalize())
+                sanCategories.append(self.sanitize_label_name(category))
             self.categories = sanCategories
             logging.info("Using labels passed as argument: {}".format(self.categories))
 
@@ -568,7 +572,7 @@ class ImageClassifier(tk.Frame):
         # Create frames to pack the label buttons
         if self.categories:
             n_labels = len(self.categories)
-            n_rows = (n_labels-1) // 5 + 1 # Each row can contain up to 4 labels
+            n_rows = (n_labels) // 4 + 1 # Each row can contain up to 4 labels
         
             self.labelFrameList = []
 
@@ -758,7 +762,12 @@ class ImageClassifier(tk.Frame):
             return
 
         # Normalize the label name
-        sanLabel = labelName.strip().lower().capitalize()
+        sanLabel = self.sanitize_label_name(labelName)
+
+        # If the label already exists return without doing anything
+        if sanLabel in self.categories:
+            logging.warning("This label already exists")
+            return
 
         # Add to category list
         self.categories.append(sanLabel)
@@ -770,6 +779,14 @@ class ImageClassifier(tk.Frame):
 
         # Redraw label buttons
         self.draw_label_buttons()
+
+    def sanitize_label_name(self, rawString):
+        '''Removes leading and trailing spaces, makes label lowercase and capitalize the first word'''
+        return rawString.strip().lower().capitalize()
+
+    def sanitize_user_name(self, rawString):
+        '''Removes all spaces and makes lowercase'''
+        return ''.join(rawString.strip().lower().split())
             
     def get_all_users(self):
         '''Returns a list of all users detected in the directory'''
@@ -1043,7 +1060,8 @@ class FsLock(object):
             f.write('unlocked')
 
     def is_locked(self):
-        return open(self.filename, 'r').read() == 'locked'
+        with open(self.filename, 'r') as f:
+            return f.read() == 'locked'
 
 if __name__ == "__main__":
     root = tk.Tk() 

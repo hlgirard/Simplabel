@@ -105,3 +105,9 @@ venv.bak/
 
 # Data is private
 /data
+
+# Lock can expose username
+/tests/test_images/.*.txt
+
+# VS Code
+.vscode

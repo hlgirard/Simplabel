@@ -1,5 +1,6 @@
 # Simplabel
 [![PyPI version](https://badge.fury.io/py/simplabel.svg)](https://badge.fury.io/py/simplabel)
+![Travis CI status](https://travis-ci.com/hlgirard/Simplabel.svg?branch=master)
 
 Graphical tool to manually label images in distinct categories to build training datasets.
 Simply pass a list of categories, a directory containing images and start labelling.
@@ -41,6 +42,9 @@ Pass the labels and image directory on the command line to start labelling. Use 
 ```
 simplabel --labels dog cat bird --directory path/to/image/directory
 ```
+
+Note that simplabel can now be called without any arguments as follows: `simplabel`.
+The user will be prompted to select an image directory and labels can be added with the + button at the bottom of the screen.
 
 After the first use, labels are stored in `labels.pkl` and the `--labels` argument is ignored.
 
@@ -94,3 +98,13 @@ categories = ['dog', 'cat', 'bird']
 MyApp = ImageClassifier(root, directory, categories)
 tk.mainloop()
 ```
+
+## License
+
+This project is licensed under the GPLv3 License - see the [LICENSE.md](LICENSE.md) file for details.
+
+## Acknowledgements
+
+Testing of tkinter GUI is based on ivan_pozdeev's answer at Stackoverflow:
+
+https://stackoverflow.com/questions/4083796/how-do-i-run-unittest-on-a-tkinter-app

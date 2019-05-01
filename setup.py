@@ -4,7 +4,7 @@ with open("README.md", "r") as f:
     long_description = f.read()
 
 setup(name='simplabel',
-      version='0.1.1',
+      version='0.1.2',
       description='Simple tool to manually label images in disctinct categories to build training datasets.',
       long_description=long_description,
       long_description_content_type="text/markdown",
@@ -18,7 +18,6 @@ setup(name='simplabel',
       ],
       scripts=[
           'bin/simplabel',
-          'bin/simplabel_noarg',
           'bin/flow_to_directory'
       ],
       zip_safe=False)
