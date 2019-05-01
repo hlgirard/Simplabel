@@ -43,6 +43,9 @@ Pass the labels and image directory on the command line to start labelling. Use 
 simplabel --labels dog cat bird --directory path/to/image/directory
 ```
 
+Note that simplabel can now be called without any arguments as follows: `simplabel`.
+The user will be prompted to select an image directory and labels can be added with the + button at the bottom of the screen.
+
 After the first use, labels are stored in `labels.pkl` and the `--labels` argument is ignored.
 
 ### Command line arguments
