@@ -1,6 +1,7 @@
 # Simplabel
-[![PyPI version](https://badge.fury.io/py/simplabel.svg)](https://badge.fury.io/py/simplabel)
-![Travis CI status](https://travis-ci.com/hlgirard/Simplabel.svg?branch=master)
+[![PyPI version](https://badge.fury.io/py/simplabel.svg)](https://pypi.org/project/simplabel/)
+[![Travis CI status](https://travis-ci.com/hlgirard/Simplabel.svg?branch=master)](https://travis-ci.com/hlgirard/Simplabel/branches)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/hlgirard/Simplabel/blob/master/LICENSE)
 
 Graphical tool to manually label images in distinct categories to build training datasets.
 Simply pass a list of categories, a directory containing images and start labelling.
