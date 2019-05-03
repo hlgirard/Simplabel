@@ -1,9 +1,11 @@
+import argparse
 import os
 import pickle
 import shutil
 import sys
+import tkinter as tk
 
-def flow_to_dict(rawDirectory, labelledDirectory):
+def flow_to_dict(rawDirectory, labelledDirectory=None):
     '''
     Copies labelled images to discting directories by label
 
@@ -18,11 +20,15 @@ def flow_to_dict(rawDirectory, labelledDirectory):
     # Detected users
     users = [f.split('_')[1].split('.')[0] for f in os.listdir(rawDirectory) if (f.endswith('.pkl') and f.startswith('labeled_'))]
 
+    if not users:
+        print("No label files found in directory.")
+        sys.exit()
+
     # Open the labelled dictionary
     if 'master' in users:
         dictPath = rawDirectory + '/labeled_master.pkl'
     else:
-        username = input("Enter username to flow [{}]:".format(users))
+        username = input("Enter username to flow {}:".format(users))
         dictPath = rawDirectory + '/labeled_{}.pkl'.format(username)
     
     if os.path.exists(dictPath):
@@ -34,6 +40,9 @@ def flow_to_dict(rawDirectory, labelledDirectory):
         
     # Get all categories that exist in the dictionary
     categories = set(labelled_dict.values())
+    # If no output directory is passed, use the input directory
+    if not labelledDirectory:
+        labelledDirectory = rawDirectory
     # Check existence of output directory
     if not os.path.exists(labelledDirectory):
         os.mkdir(labelledDirectory)
@@ -49,9 +58,20 @@ def flow_to_dict(rawDirectory, labelledDirectory):
         shutil.copy2(rawDirectory + '/' + image, labelDirect)
 
 
+def main():
+    #Setup parser
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-r", "--rawDirectory", default=os.getcwd(), help="Path of the directory containing the raw images and labeled.pkl file. Defaults to current directory")
+    ap.add_argument("-o", "--outputDirectory", help="Path of the output directory, will be created if it does not exist")
+
+    args = ap.parse_args()
+
+    # Get the variables from parser
+    rawDirectory = args.rawDirectory
+    outDirectory = args.outputDirectory
+
+    flow_to_dict(rawDirectory, outDirectory)
 
 if __name__ == "__main__":
-    rawDirectory = 'data/raw'
-    labelledDirectory = 'data/labeled'
-
-    flow_to_dict(rawDirectory, labelledDirectory)
+    main()
+    
