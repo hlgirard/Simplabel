@@ -4,7 +4,7 @@ with open("README.md", "r") as f:
     long_description = f.read()
 
 setup(name='simplabel',
-      version='0.1.2',
+      version='0.1.3',
       description='Simple tool to manually label images in disctinct categories to build training datasets.',
       long_description=long_description,
       long_description_content_type="text/markdown",
@@ -12,12 +12,14 @@ setup(name='simplabel',
       author='Henri-Louis Girard',
       author_email='hl.girard@gmail.com',
       license='GPLv3',
-      packages=find_packages(),
+      packages=find_packages(exclude=["tests.*", "tests"]),
       install_requires=[
           'pillow',
       ],
-      scripts=[
-          'bin/simplabel',
-          'bin/flow_to_directory'
-      ],
+      entry_points={
+          'console_scripts': [
+              'simplabel = simplabel.simplabel:main',
+              'flow_to_directory = simplabel.flow_to_dict:main',
+          ],
+      },
       zip_safe=False)

@@ -1,12 +1,13 @@
 import unittest
 from unittest.mock import patch
 
+from io import StringIO
 import os
 import pickle
 import tkinter
 import _tkinter
 
-from simplabel import ImageClassifier
+from simplabel import ImageClassifier, remove_label, delete_all_files
 
 class Test_Unit_Functions(unittest.TestCase):
 
@@ -105,6 +106,129 @@ class Test_Unit_Functions(unittest.TestCase):
         self.assertEqual(self.classifier.sanitize_user_name(' user Name '), 'username')
         self.assertEqual(self.classifier.sanitize_user_name('UserName'), 'username')
 
+    def test_delete_all_files(self):
+        with patch('builtins.input', return_value='y'):
+            delete_all_files(self.test_folder)
+
+        savefiles = [file for file in os.listdir(self.test_folder) if file.startswith("labeled_") and file.endswith(".pkl")]
+        lockfiles = [file for file in os.listdir(self.test_folder) if file.endswith("_lock.txt")]
+        
+        self.assertEqual(len(savefiles), 0)
+        self.assertEqual(len(lockfiles), 0)
+        self.assertFalse(os.path.exists(self.label_file))
+
+class Test_Remove_Labels(unittest.TestCase):
+
+    def setUp(self):
+
+        self.test_folder = 'tests/test_images'
+        self.label_file = os.path.join(self.test_folder, 'labels.pkl')
+
+        self.cleanup_files()
+
+        # Create label file
+        labels = ["Label1", "Label2"]
+        with open(self.label_file, 'wb') as f:
+            pickle.dump(labels, f)
+
+        self.root=tkinter.Tk()
+        self.pump_events()
+        self.classifier = ImageClassifier(self.root, directory=self.test_folder, username="testuser")
+
+    def tearDown(self):
+        self.cleanup_files()
+
+    def pump_events(self):
+        while self.root.dooneevent(_tkinter.ALL_EVENTS | _tkinter.DONT_WAIT):
+            pass
+
+    def cleanup_files(self):
+        # Delete any saved files
+        savefiles = [file for file in os.listdir(self.test_folder) if file.startswith("labeled_") and file.endswith(".pkl")]
+        if savefiles:
+            for file in savefiles:
+                os.remove(os.path.join(self.test_folder, file))
+
+        # Delete all lock files
+        lockfiles = [file for file in os.listdir(self.test_folder) if file.endswith("_lock.txt")]
+        if lockfiles:
+            for file in lockfiles:
+                os.remove(os.path.join(self.test_folder, file))
+
+        # Delete label file
+        if os.path.exists(self.label_file):
+            os.remove(self.label_file)
+
+    def test_remove_unused_label(self):
+        '''Removing an unused label should work'''
+        # Classify an image with Label1
+        self.classifier.catButton[0].invoke()
+        self.classifier.save()
+
+        # Close the app
+        if self.classifier.gotLock:
+            self.classifier.lock.release()
+        if self.root:
+            self.root.destroy()
+            self.pump_events()
+
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            remove_label(self.test_folder, "Label2")
+            printed = fake_out.getvalue().strip()
+
+        self.assertEqual(printed, "Successfully removed label Label2 from the list".strip())
+        
+        with open(self.label_file, 'rb') as f:
+            labels = pickle.load(f)
+        
+        self.assertNotIn("Label2", labels)
+
+    def test_remove_used_label(self):
+        '''Removing a used label should fail and the label should remain in labels.pkl'''
+
+        # Classify an image with Label1
+        self.classifier.catButton[0].invoke()
+        self.classifier.save()
+
+        # Close the app
+        if self.classifier.gotLock:
+            self.classifier.lock.release()
+        if self.root:
+            self.root.destroy()
+            self.pump_events()
+
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            remove_label(self.test_folder, "Label1")
+            printed = fake_out.getvalue().strip()
+
+        self.assertEqual(printed, "Label Label1 is used by testuser, cannot remove it from the list".strip())
+        
+        with open(self.label_file, 'rb') as f:
+            labels = pickle.load(f)
+        
+        self.assertIn("Label1", labels)
+
+    def test_remove_label_when_no_label_file(self):
+        '''Should print an error message'''
+
+        # Close the app
+        if self.classifier.gotLock:
+            self.classifier.lock.release()
+        if self.root:
+            self.root.destroy()
+            self.pump_events()
+
+        self.cleanup_files()
+
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            remove_label(self.test_folder, "Label1")
+            printed = fake_out.getvalue().strip()
+
+        self.assertEqual(printed, "No label file found.".strip())
+
+
+
+
 
 class Test_Misformed_Labels(unittest.TestCase):
     '''Test that the app is robust to misformed labels in the labels.pkl file'''
@@ -164,4 +288,3 @@ class Test_Misformed_Labels(unittest.TestCase):
     def test_duplicates_removes(self):
         expectedLabelList = ["Label1", "Label2", "Label with spaces", "Trailing space", "Leading space"]
         self.assertEqual(expectedLabelList, self.classifier.categories)
-        

@@ -38,14 +38,16 @@ pip install .
 
 ### Quick start
 
-Pass the labels and image directory on the command line to start labelling. Use the on-screen buttons to select a label for the current image and advance to the next one. Number keys correspond to labels and can be used instead.
+Simplabel can be started from the command line without any argument:
+```
+simplabel
+```
+You will be prompted to select a directory containing images to label. Add labels with the '+' button and start labeling. Number keys correspond to labels and can be used instead.
 
+The target directory and/or labels can also be passed directly from the command line:
 ```
 simplabel --labels dog cat bird --directory path/to/image/directory
 ```
-
-Note that simplabel can now be called without any arguments as follows: `simplabel`.
-The user will be prompted to select an image directory and labels can be added with the + button at the bottom of the screen.
 
 After the first use, labels are stored in `labels.pkl` and the `--labels` argument is ignored.
 
@@ -56,9 +58,9 @@ After the first use, labels are stored in `labels.pkl` and the `--labels` argume
 - `-u, --user <USERNAME>` sets the username. Defaults to the OS login name if none is passed.
 - `-r, --redundant` does not display other labelers selections for independent labelling. Reconciliation and Make Master are unavailable in this mode.
 - `-v, --verbose` increases the verbosity level.
-- `--remove-label` tries to safely remove a label from the list saved in `labels.pkl`.
+- `--remove-label <LABEL>` tries to safely remove a label from the list saved in `labels.pkl` (must also pass `-d`)
 - `--reset-lock` overrides the lock preventing the same username from being used multiple times simultaneously.
-- `--delete-all` removes all files created by simplabel in the directory
+- `--delete-all` removes all files created by simplabel in the directory (must also pass `-d`)
 
 ### Multiuser
 
@@ -82,7 +84,7 @@ with open("labeled_user1.pkl","rb") as f:
 Once you are done labelling, use the flow_to_directory tool to copy images to distinct directories by label
 
 ```
-flow_to_directory --rawDirectory data/raw --outDirectory data/labeled
+flow_to_directory --input-directory data/labeled --output-directory data/sorted
 ```
 
 ### Python object
