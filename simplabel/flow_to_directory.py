@@ -61,14 +61,14 @@ def flow_to_dict(rawDirectory, labelledDirectory=None):
 def main():
     #Setup parser
     ap = argparse.ArgumentParser()
-    ap.add_argument("-r", "--rawDirectory", default=os.getcwd(), help="Path of the directory containing the raw images and labeled.pkl file. Defaults to current directory")
-    ap.add_argument("-o", "--outputDirectory", help="Path of the output directory, will be created if it does not exist")
+    ap.add_argument("-i", "--input-directory", default=os.getcwd(), help="Path of the directory containing the raw images and labeled.pkl file. Defaults to current directory")
+    ap.add_argument("-o", "--output-directory", help="Path of the output directory, will be created if it does not exist")
 
     args = ap.parse_args()
 
     # Get the variables from parser
-    rawDirectory = args.rawDirectory
-    outDirectory = args.outputDirectory
+    rawDirectory = args.input_directory
+    outDirectory = args.output_directory
 
     flow_to_dict(rawDirectory, outDirectory)
     
