@@ -873,8 +873,8 @@ class ImageClassifier(tk.Frame):
                 self.save()
             elif e.char == 'q':
                 self.exit()
-            elif e.char == 'd': # FIXME: debug option only
-                self.debug_prints()
+            #elif e.char == 'd': # For debug only
+            #    self.debug_prints()
             else:
                 pass
 
@@ -996,7 +996,6 @@ class FsLock(object):
         with open(self.filename, 'r') as f:
             return f.read() == 'locked'
 
-
 def delete_all_files(directory):
     '''Deletes all files created by simplabel in a directory, this resets the labels and all saved data'''
 
@@ -1012,36 +1011,37 @@ def delete_all_files(directory):
             print("Cancelled deletion, your files are exactly where you left them ;)")
     else:
         print("No files found in {}".format(directory))
-    sys.exit(0)
+    return
 
-def remove_label(labelName):
+def remove_label(directory, labelName):
     '''Removes a label from the label file after verifying it isn't in use'''
 
     labelToRemove = labelName.strip().lower().capitalize()
 
     # Load the label file to check the presence of the label to remove
-    labelFile = rawDirectory + '/labels.pkl'
+    labelFile = directory + '/labels.pkl'
     if os.path.isfile(labelFile):
         with open(labelFile, 'rb') as f:
             labels = pickle.load(f)
         if labelToRemove not in labels:
             print("No such label in labels.pkl")
-            sys.exit(0)
+            return
     else:
         print("No label file found.")
-        sys.exit(0)
+        return
+        
     
     # Get a list of users
-    users = [f.split('_')[1].split('.')[0] for f in os.listdir(rawDirectory) if (f.endswith('.pkl') and f.startswith('labeled_'))]
+    users = [f.split('_')[1].split('.')[0] for f in os.listdir(directory) if (f.endswith('.pkl') and f.startswith('labeled_'))]
 
     # Load each user's dictionary and check for the presense of the label to remove
     for user in users:
-        dictPath = rawDirectory + "/labeled_" + user +".pkl"
+        dictPath = directory + "/labeled_" + user +".pkl"
         with open(dictPath, "rb") as f:
             userDict = pickle.load(f)
         if labelToRemove in userDict.values():
             print("Label {} is used by {}, cannot remove it from the list".format(labelToRemove, user))
-            sys.exit(0)
+            return
 
     # If the check have passed, remove the label from the list and resave the list
     labels.remove(labelToRemove)
@@ -1049,7 +1049,7 @@ def remove_label(labelName):
         pickle.dump(labels, f)
     
     print("Successfully removed label {} from the list".format(labelToRemove))
-    sys.exit(0)
+    return
 
 def main():
 
@@ -1077,10 +1077,14 @@ def main():
     # Reset all saved data if requested
     if args.delete_all:
         delete_all_files(rawDirectory)
+        sys.exit(0)
 
     # Remove label
     if args.remove_label:
-        remove_label(args.remove_label)
+        if not rawDirectory:
+            print("No directory specified. You must pass the directory containing the label file with -d")
+        remove_label(rawDirectory, args.remove_label)
+        sys.exit(0)
 
     # Launch the app
     root = tk.Tk() 

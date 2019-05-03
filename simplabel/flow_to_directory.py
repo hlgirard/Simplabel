@@ -71,7 +71,4 @@ def main():
     outDirectory = args.outputDirectory
 
     flow_to_dict(rawDirectory, outDirectory)
-
-if __name__ == "__main__":
-    main()
     

@@ -184,3 +184,64 @@ class TestMultiUser(unittest.TestCase):
             root2.destroy()
             self.pump_events(root2)
 
+    def test_redundant_mode(self):
+        '''
+        User1 opens the app, labels all images. User2 opens the app in redundant mode.
+        User2 should start from the begining and not see User1's labels.
+        '''
+
+        # User1 labels all images as Label1 and saves
+        self.classifier1.catButton[0].invoke()
+        self.classifier1.catButton[1].invoke()
+        self.classifier1.catButton[0].invoke()
+        self.classifier1.saveButton.invoke()
+
+        # User 1 closes the window
+        if self.classifier1.gotLock:
+            self.classifier1.lock.release()
+        if self.root1:
+            self.root1.destroy()
+            self.pump_events(self.root1)
+
+        # User 2 opens the app
+        root2 = tkinter.Tk()
+        self.pump_events(root2)
+        classifier2 = ImageClassifier(root2, directory=self.test_folder, username="testuser2", bRedundant=True)
+
+        # Check that the app opens on the first image
+        self.assertEqual(classifier2.counter, 0)
+
+        # User 2 labels all the images (same labels as label 1)
+        classifier2.firstButton.invoke()
+        classifier2.catButton[0].invoke()
+        classifier2.catButton[0].invoke()
+        classifier2.catButton[0].invoke()
+
+        # Check that the first image has the color of user2
+        classifier2.firstButton.invoke()
+        self.assertEqual(classifier2.catButton[0].config()['highlightbackground'][-1], classifier2.userColor)
+        self.assertEqual(classifier2.catButton[0].config()['background'][-1], classifier2.userColor)
+
+        self.assertEqual(classifier2.catButton[1].config()['highlightbackground'][-1], classifier2.buttonOrigColor)
+        self.assertEqual(classifier2.catButton[1].config()['background'][-1], classifier2.buttonBgOrigColor)
+
+        self.assertEqual(classifier2.labeled[classifier2.image_list[classifier2.counter]], "Label1")
+
+        # Check that the second image has the color of user2
+        classifier2.nextButton.invoke()
+        self.assertEqual(classifier2.catButton[1].config()['highlightbackground'][-1], classifier2.buttonOrigColor)
+        self.assertEqual(classifier2.catButton[1].config()['background'][-1], classifier2.buttonBgOrigColor)
+
+        self.assertEqual(classifier2.catButton[0].config()['highlightbackground'][-1], classifier2.userColor)
+        self.assertEqual(classifier2.catButton[0].config()['background'][-1], classifier2.userColor)
+
+        self.assertEqual(classifier2.labeled[classifier2.image_list[classifier2.counter]], "Label1")
+
+        # User 2 closes the window
+        if classifier2.gotLock:
+            classifier2.lock.release()
+        if root2:
+            root2.destroy()
+            self.pump_events(root2)
+        
+
