@@ -14,7 +14,7 @@ setup(name='simplabel',
       license='GPLv3',
       packages=find_packages(exclude=["tests.*", "tests"]),
       install_requires=[
-          'pillow',
+          'pillow>=5.4.0',
       ],
       entry_points={
           'console_scripts': [
