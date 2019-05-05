@@ -68,10 +68,15 @@ class ImageClassifier(tk.Frame):
         # Define colors to be used for users
         self.colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 
+        # Screen Dimensions
+        self.screen_width = self.root.winfo_screenwidth()
+        self.screen_height = self.root.winfo_screenheight()
+        logging.debug("Detected screen dimensions %d x %d", self.screen_width, self.screen_height)
+
         # Window Dimensions
-        self.winwidth = 800
+        self.winwidth = min([800, int(0.7*self.screen_width)])
         self.imwidth = self.winwidth - 10
-        self.imheight = int(self.imwidth // 1.5)
+        self.imheight = min([int(self.imwidth // 1.5), int(0.9*self.screen_height)])
         self.root.geometry("{}x{}".format(self.winwidth, self.imheight+80))
 
         #  Directory containing the raw images
