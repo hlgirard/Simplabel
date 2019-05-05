@@ -1,12 +1,14 @@
+'''Setuptools configuration for Simplabel'''
+
 from setuptools import setup, find_packages
 
 with open("README.md", "r") as f:
-    long_description = f.read()
+    LONG_DESCRIPTION = f.read()
 
 setup(name='simplabel',
-      version='0.1.3',
-      description='Simple tool to manually label images in disctinct categories to build training datasets.',
-      long_description=long_description,
+      version='0.1.4',
+      description='Simple tool to manually label images in disctinct categories.',
+      long_description=LONG_DESCRIPTION,
       long_description_content_type="text/markdown",
       url='https://github.com/hlgirard/Simplabel',
       author='Henri-Louis Girard',
@@ -14,7 +16,7 @@ setup(name='simplabel',
       license='GPLv3',
       packages=find_packages(exclude=["tests.*", "tests"]),
       install_requires=[
-          'pillow',
+          'pillow>=6.0.0',
       ],
       entry_points={
           'console_scripts': [

@@ -2,7 +2,7 @@ import argparse
 import tkinter as tk
 from tkinter.messagebox import askquestion, askokcancel, showwarning
 from tkinter import simpledialog, filedialog
-from PIL import Image,ImageTk
+from PIL import Image, ImageTk
 import os
 from functools import partial
 import pickle
@@ -17,7 +17,7 @@ import math
 class ImageClassifier(tk.Frame):
     """
     Manually label images from a folder into arbitrary categories
-    
+
     Parameters
     ----------
     parent : tkinter.TK()
@@ -33,9 +33,9 @@ class ImageClassifier(tk.Frame):
     autoRefresh : int
         Interval in seconds between auto-save and auto-refresh of master dict actions (0 to disable)
     bResetLock: bool
-        When true, ignores and resets the lock that prevents multiple users from using the same username
+        When true, resets the lock that prevents multiple users from using the same username
     bRedundant: bool
-        When true, other labeler's selections are not displayed. Reconcile and Master are not available in this mode.
+        When true, other labeler's selections are not displayed.
 
     Notable outputs
     -------
@@ -44,7 +44,8 @@ class ImageClassifier(tk.Frame):
         This dict is saved to disk by the 'Save' button
     """
 
-    def __init__(self, parent, directory = None, categories = None, verbose = 0, username = None, autoRefresh = 60, bResetLock = False, bRedundant = False, *args, **kwargs):
+    def __init__(self, parent, directory=None, categories=None, verbose=0, username=None,
+                 autoRefresh=60, bResetLock=False, bRedundant=False, *args, **kwargs):
 
         # Initialize frame
         tk.Frame.__init__(self, parent, *args, **kwargs)
@@ -63,15 +64,22 @@ class ImageClassifier(tk.Frame):
         self.gotLock = False
 
         # Supported image file formats (all extensions supported by PIL should work)
-        self.supported_extensions = ['jpg','png','gif','jpeg ','eps','bmp','tiff','bmp','icns','ico','spi',]
+        self.supported_extensions = ['jpg', 'png', 'gif', 'jpeg ', 'eps', 'bmp', 'tiff', 'bmp',
+                                     'icns', 'ico', 'spi',]
 
         # Define colors to be used for users
-        self.colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+        self.colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2',
+                       '#7f7f7f', '#bcbd22', '#17becf']
+
+        # Screen Dimensions
+        self.screen_width = self.root.winfo_screenwidth()
+        self.screen_height = self.root.winfo_screenheight()
+        logging.debug("Detected screen dimensions %d x %d", self.screen_width, self.screen_height)
 
         # Window Dimensions
-        self.winwidth = 1000
+        self.winwidth = min([800, int(0.7*self.screen_width)])
         self.imwidth = self.winwidth - 10
-        self.imheight = int(self.imwidth // 1.5)
+        self.imheight = min([int(self.imwidth // 1.5), int(0.9*self.screen_height)])
         self.root.geometry("{}x{}".format(self.winwidth, self.imheight+80))
 
         #  Directory containing the raw images
@@ -79,7 +87,8 @@ class ImageClassifier(tk.Frame):
             self.folder = directory
         else:
             logging.info("No directory passed. Please select a directory...")
-            response = filedialog.askdirectory(title = "Select image directory", initialdir=os.getcwd(), mustexist = True)
+            response = filedialog.askdirectory(title="Select image directory",
+                                               initialdir=os.getcwd(), mustexist=True)
             if os.path.isdir(response):
                 self.folder = response
             else:
@@ -95,9 +104,9 @@ class ImageClassifier(tk.Frame):
         self.reconciledLabelsDict = None
         self.redundantMode = bRedundant
         if self.redundantMode:
-            logging.warning("Redundant Mode - Other labeler's selections won't be displayed. Reconciliation and Make Master are unavailable.")
+            logging.warning("Redundant Mode - Other labeler's selections won't be displayed.")
 
-        # Initialize a refresh timestamp and refresh interval for auto-save and auto-refresh master dict
+        # Initialize a refresh timestamp and refresh interval for auto-save and auto-refresh
         self.saveTimestamp = time.time()
         self.saveInterval = autoRefresh
         self.refreshTimestamp = time.time()
@@ -133,7 +142,6 @@ class ImageClassifier(tk.Frame):
                 logging.warning("No username passed, saving as guest")
             finally:
                 self.username = username
-                
 
         # Choose a color for the user and make sure user is in self.users
         if self.username in self.users:
@@ -149,16 +157,19 @@ class ImageClassifier(tk.Frame):
             self.lock.acquire()
         except:
             if bResetLock:
-                logging.warning("Overriding the lock, this should only be used if you are certain no other user is using the same username.")
+                logging.warning("Overriding the lock, this should only be used if you are certain \
+                                no other user is using the same username.")
                 self.lock.release()
                 self.lock.acquire()
             else:
-                logging.warning("The app is already in use with this username ({}). Please choose another username and restart.".format(self.username))
-                logging.warning("If you are certain that is not the case, restart the app with the flag --reset-lock")
+                logging.warning("The app is already in use with this username ({}). Please choose \
+                                another username and restart.".format(self.username))
+                logging.warning("If you are certain that is not the case, restart the app with \
+                                 the flag --reset-lock")
                 self.errorClose()
-            
+
         self.gotLock = True
-        
+
         # Directory containing the saved labeled dictionary
         self.savepath = self.folder + "/labeled_" + self.username +".pkl"
 
@@ -175,7 +186,7 @@ class ImageClassifier(tk.Frame):
 
         # Create a button for each of the categories
         self.draw_label_buttons()
-        
+
         # Display the first image
         self.display_image()
 
@@ -198,8 +209,8 @@ class ImageClassifier(tk.Frame):
         # Create a canvas for the image
         self.cv1 = tk.Canvas(self.frame1, background="white", relief=tk.RAISED, highlightthickness=0)
         self.cv1.pack(in_=self.frame1, fill=tk.BOTH, expand=tk.YES)
-        
-        # Placeholder for the label button frame 
+
+        # Placeholder for the label button frame
         self.labelFrameList = None
 
         # Create the key bindings
@@ -208,39 +219,39 @@ class ImageClassifier(tk.Frame):
         self.root.bind("<Right>", self.next_image)
 
         # Create the navigation buttons
-        self.firstButton = tk.Button(self.root, text='|<<', height=2, width=3, command =self.goto_first_image)
-        self.firstButton.pack(in_=self.frame0, side = tk.LEFT)
-        self.prevButton = tk.Button(self.root, text='<', height=2, width=3, command =self.previous_image)
-        self.prevButton.pack(in_=self.frame0, side = tk.LEFT)
-        self.nextButton = tk.Button(self.root, text='>', height=2, width=3, command =self.next_image)
-        self.nextButton.pack(in_=self.frame0, side = tk.LEFT)
-        self.nextUnlabeledButton = tk.Button(self.root, text='>?', height=2, width=3, wraplength=80, command =self.goto_next_unlabeled)
-        self.nextUnlabeledButton.pack(in_=self.frame0, side = tk.LEFT)
+        self.firstButton = tk.Button(self.root, text='|<<', height=2, width=3, command=self.goto_first_image)
+        self.firstButton.pack(in_=self.frame0, side=tk.LEFT)
+        self.prevButton = tk.Button(self.root, text='<', height=2, width=3, command=self.previous_image)
+        self.prevButton.pack(in_=self.frame0, side=tk.LEFT)
+        self.nextButton = tk.Button(self.root, text='>', height=2, width=3, command=self.next_image)
+        self.nextButton.pack(in_=self.frame0, side=tk.LEFT)
+        self.nextUnlabeledButton = tk.Button(self.root, text='>?', height=2, width=3, wraplength=80, command=self.goto_next_unlabeled)
+        self.nextUnlabeledButton.pack(in_=self.frame0, side=tk.LEFT)
         self.buttonOrigColor = self.firstButton.config()['highlightbackground'][-1]
         self.buttonBgOrigColor = self.firstButton.config()['background'][-1]
-        self.lastButton = tk.Button(self.root, text='>>|', height=2, width=3, command =self.goto_last_image)
-        self.lastButton.pack(in_=self.frame0, side = tk.LEFT)
+        self.lastButton = tk.Button(self.root, text='>>|', height=2, width=3, command=self.goto_last_image)
+        self.lastButton.pack(in_=self.frame0, side=tk.LEFT)
 
         # Create the user action buttons
-        self.saveButton = tk.Button(self.root, text='Save', height=2, width=8, command =self.save)
-        self.saveButton.pack(in_=self.frame0, side = tk.LEFT)
-        tk.Button(self.root, text='Exit', height=2, width=8, command =self.exit).pack(in_=self.frame0, side = tk.RIGHT)
-        self.masterButton = tk.Button(self.root, text='Make Master', height=2,  wraplength=80, width=8, command =self.make_master)
-        self.masterButton.pack(in_=self.frame0, side = tk.RIGHT)
-        self.reconcileButton = tk.Button(self.root, text='Reconcile',  wraplength=80, height=2, width=8, command =self.reconcile)
-        self.reconcileButton.pack(in_=self.frame0, side = tk.RIGHT)
+        self.saveButton = tk.Button(self.root, text='Save', height=2, width=8, command=self.save)
+        self.saveButton.pack(in_=self.frame0, side=tk.LEFT)
+        tk.Button(self.root, text='Exit', height=2, width=8, command=self.exit).pack(in_=self.frame0, side=tk.RIGHT)
+        self.masterButton = tk.Button(self.root, text='Make Master', height=2, wraplength=55, width=8, command=self.make_master)
+        self.masterButton.pack(in_=self.frame0, side=tk.RIGHT)
+        self.reconcileButton = tk.Button(self.root, text='Reconcile', wraplength=80, height=2, width=8, command=self.reconcile)
+        self.reconcileButton.pack(in_=self.frame0, side=tk.RIGHT)
 
         # Disable Reconcile and Make Master in Redundant mode
         if self.redundantMode:
-            self.reconcileButton.config(state = tk.DISABLED)
-            self.masterButton.config(state = tk.DISABLED)
+            self.reconcileButton.config(state=tk.DISABLED)
+            self.masterButton.config(state=tk.DISABLED)
 
         # Create a textbox for the current image information
         self.infoText = tk.Text(self.root, height=2, width=65, wrap=None)
         self.infoText.pack(in_=self.frame0)
         self.infoText.tag_config("c", justify=tk.CENTER)
         self.infoText.tag_config("r", foreground="#8B0000")
-        self.infoText.tag_config("u", underline=1, foreground = self.userColor)
+        self.infoText.tag_config("u", underline=1, foreground=self.userColor)
 
         ## Create user color tags
         for (user, color) in self.userColors.items():
@@ -263,7 +274,7 @@ class ImageClassifier(tk.Frame):
             # Remove duplicates
             self.categories = list(dict.fromkeys(sanLabels))
             logging.info("Loaded labels from file: {}".format(self.categories))
-        
+
         # If no file is found and there are passed arguments, sanitize and use them
         elif self.categories:
             sanCategories = []
@@ -274,9 +285,9 @@ class ImageClassifier(tk.Frame):
 
             # Save labels to file
             if not self.labels_from_file:
-                with open(self.labelpath,'wb') as f:
+                with open(self.labelpath, 'wb') as f:
                     pickle.dump(self.categories, f)
-        
+
         # If no file and no categories passed, leave categories as an empty list
         else:
             self.categories = []
@@ -298,7 +309,8 @@ class ImageClassifier(tk.Frame):
         self.image_list = []
 
         ## If the directory contains at least 1 image, process only this directory
-        list_image_files = [d for d in os.listdir(self.folder) if d.split('.')[-1].lower() in self.supported_extensions]
+        list_image_files = [d for d in os.listdir(self.folder) if
+                            d.split('.')[-1].lower() in self.supported_extensions]
         if len(list_image_files) > 0:
             labeledByCurrentUser = []
             labeledByOtherUser = []
@@ -316,10 +328,12 @@ class ImageClassifier(tk.Frame):
             labeledByCurrentUser = []
             labeledByOtherUser = []
             toLabel = []
-            sub_folder_list = [dirName for dirName in next(os.walk(self.folder))[1] if not dirName.startswith('.')]
+            sub_folder_list = [dirName for dirName in next(os.walk(self.folder))[1]
+                               if not dirName.startswith('.')]
             for dirName in sub_folder_list:
                 dir_path = os.path.join(self.folder, dirName)
-                list_image_files = [d for d in os.listdir(dir_path) if d.split('.')[-1].lower() in self.supported_extensions]
+                list_image_files = [d for d in os.listdir(dir_path)
+                                    if d.split('.')[-1].lower() in self.supported_extensions]
                 for img in list_image_files:
                     imgPath = dirName + '/' + img
                     if imgPath in self.labeled:
@@ -329,13 +343,14 @@ class ImageClassifier(tk.Frame):
                     else:
                         toLabel.append(imgPath)
 
-        # Images that are already labeled are concatenated with the ones labeled by the current user last to enable them to review their own labelling
+        # Images that are already labeled are concatenated with the ones labeled by the current user
+        #  last to enable them to review their own labelling
         alreadyLabeled = labeledByOtherUser + labeledByCurrentUser
 
         # Initialize counter at the numer of already labeled images
         self.counter = len(alreadyLabeled)
 
-        # Add already labeled images first, images to label are shuffled 
+        # Add already labeled images first, images to label are shuffled
         random.seed() # Reset the random seed
         random.shuffle(toLabel) # Shuffle the list in place
         self.image_list = alreadyLabeled + toLabel
@@ -345,10 +360,11 @@ class ImageClassifier(tk.Frame):
             logging.warning("No images found in directory.")
             self.errorClose()
         else:
-            logging.info("Found {} images under the directory: {}".format(len(self.image_list), self.folder if '/' not in self.folder else self.folder.split('/')[-1]))
+            logging.info("Found {} images under the directory: {}".format(
+                len(self.image_list), self.folder if '/' not in self.folder else self.folder.split('/')[-1]))
             logging.info("{} images left to label".format(len(self.image_list)-self.counter))
 
-        # Get number of images   
+        # Get number of images
         self.max_count = len(self.image_list)-1
 
     ##############################
@@ -364,7 +380,7 @@ class ImageClassifier(tk.Frame):
 
             # Update reconciledLabelsDict
             self.reconciledLabelsDict[img] = category
-            
+
             if self.saved:
                 self.saved = False
 
@@ -375,7 +391,7 @@ class ImageClassifier(tk.Frame):
             logging.info('Label {} selected for image {}'.format(category, self.image_list[self.counter]))
             if self.saved: # Reset saved status
                 self.saved = False
-        
+
             # If it is time to refresh the master and not in reconcile mode, do that
             # Note: after the refresh, the counter will be at the next unlabeled position
             if self.refreshInterval != 0 and (time.time() - self.refreshTimestamp > self.refreshInterval):
@@ -402,12 +418,14 @@ class ImageClassifier(tk.Frame):
 
         # Check if there are any disagreed labels, enter reconcile mode and return if there are
         if len(labeledDisagreed) != 0:
-            showwarning("Reconciliation needed", "Some images have conflicting labels, please reconcile them and try again.")
+            showwarning("Reconciliation needed", "Some images have conflicting labels, \
+                         please reconcile them and try again.")
             self.reconcile()
             return
         # Check to see whether there are images left to label, ask user if they want to proceed anyway
         elif len(toLabel) != 0:
-            response = askquestion("Unlabeled images", "Some images have not been labeled yet, do you want to proceed anyway?")
+            response = askquestion("Unlabeled images", "Some images have not been labeled yet, \
+                                    do you want to proceed anyway?")
             if response == 'no':
                 return
 
@@ -423,7 +441,7 @@ class ImageClassifier(tk.Frame):
 
         # Change the button color
         self.masterButton.config(highlightbackground='#3E4149', bg='#3E4149')
-        
+
     def reconcile(self):
         '''Display images with disagreed labels for reconciliation'''
 
@@ -438,10 +456,10 @@ class ImageClassifier(tk.Frame):
                     if lock.is_locked():
                         logging.warning("{} is logged in the app, cannot reconcile unless all users have closed the app.".format(user))
                         return
-            
+
             # Must save before starting reconcile mode
             if not self.saved:
-                result = askokcancel('Save?', 'Results must be saved before entering reconciliation', icon = 'warning')
+                result = askokcancel('Save?', 'Results must be saved before entering reconciliation', icon='warning')
                 if result:
                     self.save()
                 else:
@@ -451,9 +469,9 @@ class ImageClassifier(tk.Frame):
             self.reconcileMode = True
 
             # Change button text and status
-            self.reconcileButton.config(text = "Back", highlightbackground='#3E4149', bg='#3E4149')
+            self.reconcileButton.config(text="Back", highlightbackground='#3E4149', bg='#3E4149')
 
-            # Rebuild the image list 
+            # Rebuild the image list
             (labeledAgreed, labeledDisagreed, toLabel) = self.sort_conflicting_imgs()
 
             # Initialize an empty reconciledLabelsDict
@@ -462,14 +480,15 @@ class ImageClassifier(tk.Frame):
             # Setup the counter, image_list and display the next image
             self.counter = len(labeledAgreed)
             self.image_list = labeledAgreed + labeledDisagreed + toLabel
-            logging.info(f"Reconcile Mode - {len(labeledAgreed)} images with agreed labels, {len(labeledDisagreed)} images with disagreed labels, {len(toLabel)} images to label")
+            logging.info(f"Reconcile Mode - {len(labeledAgreed)} images with agreed labels, {len(labeledDisagreed)} \
+                           images with disagreed labels, {len(toLabel)} images to label")
             self.display_image()
 
         # Turn off Reconcile mode
         else:
             # Must save before going back to normal mode
             if not self.saved:
-                result = askquestion('Save?', 'Do you want to save the reconciliation results?', icon = 'warning')
+                result = askquestion('Save?', 'Do you want to save the reconciliation results?', icon='warning')
                 if result:
                     self.save()
                 else:
@@ -479,7 +498,7 @@ class ImageClassifier(tk.Frame):
             self.reconcileMode = False
 
             # Change button back
-            self.reconcileButton.config(text = "Reconcile", highlightbackground=self.buttonOrigColor, bg=self.buttonBgOrigColor)
+            self.reconcileButton.config(text="Reconcile", highlightbackground=self.buttonOrigColor, bg=self.buttonBgOrigColor)
 
             # Destroy reconciledLabelsDict
             self.reconciledLabelsDict = None
@@ -579,23 +598,34 @@ class ImageClassifier(tk.Frame):
                 # If the image is larger than the frame, rescale it to fit
                 if (self.imwidth / self.imheight) < (self.im.size[0] / self.im.size[1]):
                     # Image sticks out more in width than in height, set the width and scale the height
-                    width = self.imwidth
-                    height = width*self.im.size[1]/self.im.size[0]
+                    width = int(self.imwidth)
+                    height = int(width*self.im.size[1]/self.im.size[0])
                 else:
-                    height = self.imheight
-                    width = height*self.im.size[0]/self.im.size[1]
+                    height = int(self.imheight)
+                    width = int(height*self.im.size[0]/self.im.size[1])
 
                 self.im.thumbnail((width, height), Image.ANTIALIAS)
             
-            elif (self.im.size[0] * 2 > self.imwidth) and (self.im.size[1] * 2 > self.imheight):
-                # If the image is within 50% of the frame size, don't modify it at all
-                pass
-            else:
+            elif (self.im.size[0] * 2 > self.imwidth) or (self.im.size[1] * 2 > self.imheight):
+                logging.debug("Resizing - Image is within 50% of frame size, resizing to full frame size")
+                # If the image is within 50% of the frame size, resize it to fill the frame
+                if (self.imwidth / self.imheight) < (self.im.size[0] / self.im.size[1]):
+                    # Image aspect ratio smaller than frame, set the width and scale the height
+                    width = int(self.imwidth)
+                    height = int(width*self.im.size[1]/self.im.size[0])
+                else:
+                    height = int(self.imheight)
+                    width = int(height*self.im.size[0]/self.im.size[1])
+                
+                self.im = self.im.resize((width, height), resample = Image.BICUBIC)
+
+            elif (self.im.size[0] * 2 < self.imwidth) and (self.im.size[1] * 2 < self.imheight):
+                logging.debug("Resizing - Image is smaller than 50% of frame size, resizing")
                 # If the image is very small, resize it up to 2x
                 width = int(self.im.size[0] * 2)
                 height = int(self.im.size[1] * 2)
 
-                self.im.resize((width, height), resample = Image.BICUBIC)
+                self.im = self.im.resize((width, height), resample = Image.BICUBIC)
                 
             
             self.photo = ImageTk.PhotoImage(self.im)
@@ -607,10 +637,22 @@ class ImageClassifier(tk.Frame):
                 self.cv1.delete("all")
                 self.cv1.create_image(self.imwidth // 2, self.imheight // 2, image = self.photo)
 
+            
+            # Truncate the image name to keep it short
+            if len(img) > 18:
+                if '/' in img:
+                    img_name = '../' + img.split('/')[-1].split('.')[0]
+                else:
+                    img_name = '..' + img.split('.')[0][-16:]
+            elif len(img) > 10:
+                img_name = img.split('.')[0]
+            else:
+                img_name = img
+
             # Edit the text information
             self.infoText.config(state=tk.NORMAL)
             self.infoText.delete('1.0', '1.end')
-            self.infoText.insert('1.0',"Image {}/{} - Filename: {}".format(self.counter+1,self.max_count+1,img), 'c')
+            self.infoText.insert('1.0',"Image {}/{} - Filename: {}".format(self.counter+1,self.max_count+1,img_name), 'c')
             self.infoText.config(state=tk.DISABLED)
 
             # Reset all button styles (colors and outline)
@@ -842,24 +884,24 @@ class ImageClassifier(tk.Frame):
         self.update_all_dict()
         
         for img in self.image_list:
-                if img in self.allLabeledDict:
-                    labelList = self.allLabeledDict[img]
-                    # If only one user labeled the image, it is not disagreed
-                    if len(labelList) == 1:
+            if img in self.allLabeledDict:
+                labelList = self.allLabeledDict[img]
+                # If only one user labeled the image, it is not disagreed
+                if len(labelList) == 1:
+                    labeledAgreed.append(img)
+                # If multiple labels are found, compare the labels
+                elif len(labelList) > 1:
+                    selectedLabel = None
+                    for (_, label) in labelList.items():
+                        if not selectedLabel:
+                            selectedLabel = label
+                        elif label != selectedLabel:
+                            labeledDisagreed.append(img)
+                            break
+                    if img not in labeledDisagreed:
                         labeledAgreed.append(img)
-                    # If multiple labels are found, compare the labels
-                    elif len(labelList) > 1:
-                        selectedLabel = None
-                        for (_, label) in labelList.items():
-                            if not selectedLabel:
-                                selectedLabel = label
-                            elif label != selectedLabel:
-                                labeledDisagreed.append(img)
-                                break
-                        if img not in labeledDisagreed:
-                            labeledAgreed.append(img)
-                else:
-                    toLabel.append(img)
+            else:
+                toLabel.append(img)
 
         return (labeledAgreed, labeledDisagreed, toLabel)
 
