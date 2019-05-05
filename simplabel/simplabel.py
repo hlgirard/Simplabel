@@ -224,10 +224,10 @@ class ImageClassifier(tk.Frame):
         # Create the user action buttons
         self.saveButton = tk.Button(self.root, text='Save', height=2, width=8, command =self.save)
         self.saveButton.pack(in_=self.frame0, side = tk.LEFT)
-        tk.Button(self.root, text='Exit', height=2, width=8, command =self.exit).pack(in_=self.frame0, side = tk.RIGHT)
-        self.masterButton = tk.Button(self.root, text='Make Master', height=2,  wraplength=80, width=8, command =self.make_master)
+        tk.Button(self.root, text='Exit', height=2, width=8, command=self.exit).pack(in_=self.frame0, side=tk.RIGHT)
+        self.masterButton = tk.Button(self.root, text='Make Master', height=2,  wraplength=55, width=8, command=self.make_master)
         self.masterButton.pack(in_=self.frame0, side = tk.RIGHT)
-        self.reconcileButton = tk.Button(self.root, text='Reconcile',  wraplength=80, height=2, width=8, command =self.reconcile)
+        self.reconcileButton = tk.Button(self.root, text='Reconcile',  wraplength=80, height=2, width=8, command=self.reconcile)
         self.reconcileButton.pack(in_=self.frame0, side = tk.RIGHT)
 
         # Disable Reconcile and Make Master in Redundant mode
@@ -607,10 +607,22 @@ class ImageClassifier(tk.Frame):
                 self.cv1.delete("all")
                 self.cv1.create_image(self.imwidth // 2, self.imheight // 2, image = self.photo)
 
+            
+            # Truncate the image name to keep it short
+            if len(img) > 18:
+                if '/' in img:
+                    img_name = '../' + img.split('/')[-1].split('.')[0]
+                else:
+                    img_name = '..' + img.split('.')[0][-16:]
+            elif len(img) > 10:
+                img_name = img.split('.')[0]
+            else:
+                img_name = img
+
             # Edit the text information
             self.infoText.config(state=tk.NORMAL)
             self.infoText.delete('1.0', '1.end')
-            self.infoText.insert('1.0',"Image {}/{} - Filename: {}".format(self.counter+1,self.max_count+1,img), 'c')
+            self.infoText.insert('1.0',"Image {}/{} - Filename: {}".format(self.counter+1,self.max_count+1,img_name), 'c')
             self.infoText.config(state=tk.DISABLED)
 
             # Reset all button styles (colors and outline)
