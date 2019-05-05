@@ -2,7 +2,7 @@ import argparse
 import tkinter as tk
 from tkinter.messagebox import askquestion, askokcancel, showwarning
 from tkinter import simpledialog, filedialog
-from PIL import Image,ImageTk
+from PIL import Image, ImageTk
 import os
 from functools import partial
 import pickle
@@ -579,23 +579,34 @@ class ImageClassifier(tk.Frame):
                 # If the image is larger than the frame, rescale it to fit
                 if (self.imwidth / self.imheight) < (self.im.size[0] / self.im.size[1]):
                     # Image sticks out more in width than in height, set the width and scale the height
-                    width = self.imwidth
-                    height = width*self.im.size[1]/self.im.size[0]
+                    width = int(self.imwidth)
+                    height = int(width*self.im.size[1]/self.im.size[0])
                 else:
-                    height = self.imheight
-                    width = height*self.im.size[0]/self.im.size[1]
+                    height = int(self.imheight)
+                    width = int(height*self.im.size[0]/self.im.size[1])
 
                 self.im.thumbnail((width, height), Image.ANTIALIAS)
             
-            elif (self.im.size[0] * 2 > self.imwidth) and (self.im.size[1] * 2 > self.imheight):
-                # If the image is within 50% of the frame size, don't modify it at all
-                pass
-            else:
+            elif (self.im.size[0] * 2 > self.imwidth) or (self.im.size[1] * 2 > self.imheight):
+                logging.debug("Resizing - Image is within 50% of frame size, resizing to full frame size")
+                # If the image is within 50% of the frame size, resize it to fill the frame
+                if (self.imwidth / self.imheight) < (self.im.size[0] / self.im.size[1]):
+                    # Image aspect ratio smaller than frame, set the width and scale the height
+                    width = int(self.imwidth)
+                    height = int(width*self.im.size[1]/self.im.size[0])
+                else:
+                    height = int(self.imheight)
+                    width = int(height*self.im.size[0]/self.im.size[1])
+                
+                self.im = self.im.resize((width, height), resample = Image.BICUBIC)
+
+            elif (self.im.size[0] * 2 < self.imwidth) and (self.im.size[1] * 2 < self.imheight):
+                logging.debug("Resizing - Image is smaller than 50% of frame size, resizing")
                 # If the image is very small, resize it up to 2x
                 width = int(self.im.size[0] * 2)
                 height = int(self.im.size[1] * 2)
 
-                self.im.resize((width, height), resample = Image.BICUBIC)
+                self.im = self.im.resize((width, height), resample = Image.BICUBIC)
                 
             
             self.photo = ImageTk.PhotoImage(self.im)
