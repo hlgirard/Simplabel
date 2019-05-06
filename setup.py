@@ -21,7 +21,7 @@ setup(name='simplabel',
       entry_points={
           'console_scripts': [
               'simplabel = simplabel.simplabel:main',
-              'flow_to_directory = simplabel.flow_to_dict:main',
+              'flow_to_directory = simplabel.flow_to_directory:main',
           ],
       },
       zip_safe=False)

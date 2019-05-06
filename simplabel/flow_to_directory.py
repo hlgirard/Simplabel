@@ -4,6 +4,7 @@ import pickle
 import shutil
 import sys
 import tkinter as tk
+import logging
 
 def flow_to_dict(rawDirectory, labelledDirectory=None):
     '''
@@ -21,7 +22,7 @@ def flow_to_dict(rawDirectory, labelledDirectory=None):
     users = [f.split('_')[1].split('.')[0] for f in os.listdir(rawDirectory) if (f.endswith('.pkl') and f.startswith('labeled_'))]
 
     if not users:
-        print("No label files found in directory.")
+        logging.warning("No label files found in directory.")
         sys.exit()
 
     # Open the labelled dictionary
@@ -35,7 +36,7 @@ def flow_to_dict(rawDirectory, labelledDirectory=None):
         with open(dictPath,'rb') as f:
             labelled_dict = pickle.load(f)
     else:
-        print("No dictionary found at: {}".format(dictPath))
+        logging.warning("No dictionary found at: %s", dictPath)
         sys.exit()
         
     # Get all categories that exist in the dictionary
@@ -54,7 +55,7 @@ def flow_to_dict(rawDirectory, labelledDirectory=None):
     # For each file in dictionary, move it to corresponding directory
     for image, label in labelled_dict.items():
         labelDirect = labelledDirectory + '/' + label
-        print("Copying {} to {}".format(image, labelDirect))
+        logging.info("Copying %s to %s", image, labelDirect)
         shutil.copy2(rawDirectory + '/' + image, labelDirect)
 
 
@@ -63,12 +64,21 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-i", "--input-directory", default=os.getcwd(), help="Path of the directory containing the raw images and labeled.pkl file. Defaults to current directory")
     ap.add_argument("-o", "--output-directory", help="Path of the output directory, will be created if it does not exist")
+    ap.add_argument("-v", "--verbose", action='count', default=0, help="Enable verbose mode")
 
     args = ap.parse_args()
 
-    # Get the variables from parser
-    rawDirectory = args.input_directory
-    outDirectory = args.output_directory
+    # Initialize logger
+    if args.verbose == 1:
+        logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
+    elif args.verbose >= 2:
+        logging.basicConfig(level=logging.DEBUG, format='%(levelname)s - %(message)s')
+    else:
+        logging.basicConfig(level=logging.WARNING, format='%(levelname)s - %(message)s')
 
-    flow_to_dict(rawDirectory, outDirectory)
+    # Get the variables from parser
+    raw_directory = args.input_directory
+    out_directory = args.output_directory
+
+    flow_to_dict(raw_directory, out_directory)
     
