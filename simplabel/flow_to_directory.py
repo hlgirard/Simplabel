@@ -27,10 +27,13 @@ def flow_to_dict(rawDirectory, labelledDirectory=None):
 
     # Open the labelled dictionary
     if 'master' in users:
-        dictPath = rawDirectory + '/labeled_master.pkl'
+        dictPath = os.path.join(rawDirectory, 'labeled_master.pkl')
     else:
         username = input("Enter username to flow {}:".format(users))
-        dictPath = rawDirectory + '/labeled_{}.pkl'.format(username)
+        while username not in users:
+            username = input("Choose a username from the list {}:".format(users))
+        dictPath = os.path.join(rawDirectory, 'labeled_{}.pkl'.format(username))
+
     
     if os.path.exists(dictPath):
         with open(dictPath,'rb') as f:
@@ -49,14 +52,22 @@ def flow_to_dict(rawDirectory, labelledDirectory=None):
         os.mkdir(labelledDirectory)
     # Check existence of sub folders, create if necessary
     for label in categories:
-        labelDirect = labelledDirectory + '/' + label
+        labelDirect = os.path.join(labelledDirectory, label)
         if not os.path.exists(labelDirect):
             os.mkdir(labelDirect)
     # For each file in dictionary, move it to corresponding directory
-    for image, label in labelled_dict.items():
-        labelDirect = labelledDirectory + '/' + label
-        logging.info("Copying %s to %s", image, labelDirect)
-        shutil.copy2(rawDirectory + '/' + image, labelDirect)
+    try:
+        import tqdm
+        for image, label in tqdm.tqdm(labelled_dict.items()):
+            labelDirect = os.path.join(labelledDirectory, label)
+            logging.debug("Copying %s to %s", image, labelDirect)
+            shutil.copy2(os.path.join(rawDirectory, image), labelDirect)
+
+    except ImportError:
+        for image, label in tqdm(labelled_dict.items()):
+            labelDirect = os.path.join(labelledDirectory, label)
+            logging.debug("Copying %s to %s", image, labelDirect)
+            shutil.copy2(os.path.join(rawDirectory, image), labelDirect)
 
 
 def main():
