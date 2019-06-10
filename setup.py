@@ -6,7 +6,7 @@ with open("README.md", "r") as f:
     long_description = f.read()
 
 setup(name='simplabel',
-      version='0.1.4',
+      version='0.1.5',
       description='Simple tool to manually label images in disctinct categories.',
       long_description=long_description,
       long_description_content_type="text/markdown",
