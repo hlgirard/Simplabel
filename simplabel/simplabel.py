@@ -1098,7 +1098,7 @@ def main():
     #Setup parser
     ap = argparse.ArgumentParser()
     ap.add_argument("-d", "--directory", default=None, help="Path of the directory")
-    ap.add_argument("-l", "--labels", default=None, help="List of labels")
+    ap.add_argument("-l", "--labels", nargs='+', default=None, help="List of labels")
     ap.add_argument("-v", "--verbose", action='count', default=0, help="Enable verbose mode")
     ap.add_argument("-u", "--user", help="Set username for the current session")
     ap.add_argument("-r", "--redundant", action='store_true', help="Redundant mode: do not show other labeler's selections")

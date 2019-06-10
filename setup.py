@@ -3,12 +3,12 @@
 from setuptools import setup, find_packages
 
 with open("README.md", "r") as f:
-    LONG_DESCRIPTION = f.read()
+    long_description = f.read()
 
 setup(name='simplabel',
-      version='0.1.4',
+      version='0.1.5',
       description='Simple tool to manually label images in disctinct categories.',
-      long_description=LONG_DESCRIPTION,
+      long_description=long_description,
       long_description_content_type="text/markdown",
       url='https://github.com/hlgirard/Simplabel',
       author='Henri-Louis Girard',
@@ -21,7 +21,7 @@ setup(name='simplabel',
       entry_points={
           'console_scripts': [
               'simplabel = simplabel.simplabel:main',
-              'flow_to_directory = simplabel.flow_to_dict:main',
+              'flow_to_directory = simplabel.flow_to_directory:main',
           ],
       },
       zip_safe=False)
