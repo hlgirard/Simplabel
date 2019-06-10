@@ -64,7 +64,7 @@ def flow_to_dict(rawDirectory, labelledDirectory=None):
             shutil.copy2(os.path.join(rawDirectory, image), labelDirect)
 
     except ImportError:
-        for image, label in tqdm(labelled_dict.items()):
+        for image, label in labelled_dict.items():
             labelDirect = os.path.join(labelledDirectory, label)
             logging.debug("Copying %s to %s", image, labelDirect)
             shutil.copy2(os.path.join(rawDirectory, image), labelDirect)
@@ -74,7 +74,7 @@ def main():
     #Setup parser
     ap = argparse.ArgumentParser()
     ap.add_argument("-i", "--input-directory", default=os.getcwd(), help="Path of the directory containing the raw images and labeled.pkl file. Defaults to current directory")
-    ap.add_argument("-o", "--output-directory", help="Path of the output directory, will be created if it does not exist")
+    ap.add_argument("-o", "--output-directory", help="Path of the output directory, will be created if it does not exist. Defaults to same as input directory.")
     ap.add_argument("-v", "--verbose", action='count', default=0, help="Enable verbose mode")
 
     args = ap.parse_args()
