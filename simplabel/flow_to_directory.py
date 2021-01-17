@@ -1,6 +1,6 @@
 import argparse
 import os
-import pickle
+import json
 import shutil
 import sys
 import tkinter as tk
@@ -13,13 +13,13 @@ def flow_to_dict(rawDirectory, labelledDirectory=None):
     Arguments
     --------
     rawDirectory: string
-        Path to the directory containing raw images. It must also contain a labeled.pkl file created with simplabel containing the labels
+        Path to the directory containing raw images. It must also contain a labeled.json file created with simplabel containing the labels
     labelledDirectory: string
         Path to the output directory. A folder will be created for each label in the dictionary.
     '''
 
     # Detected users
-    users = [f.split('_')[1].split('.')[0] for f in os.listdir(rawDirectory) if (f.endswith('.pkl') and f.startswith('labeled_'))]
+    users = [f.split('_')[1].split('.')[0] for f in os.listdir(rawDirectory) if (f.endswith('.json') and f.startswith('labeled_'))]
 
     if not users:
         logging.warning("No label files found in directory.")
@@ -27,17 +27,17 @@ def flow_to_dict(rawDirectory, labelledDirectory=None):
 
     # Open the labelled dictionary
     if 'master' in users:
-        dictPath = os.path.join(rawDirectory, 'labeled_master.pkl')
+        dictPath = os.path.join(rawDirectory, 'labeled_master.json')
     else:
         username = input("Enter username to flow {}:".format(users))
         while username not in users:
             username = input("Choose a username from the list {}:".format(users))
-        dictPath = os.path.join(rawDirectory, 'labeled_{}.pkl'.format(username))
+        dictPath = os.path.join(rawDirectory, 'labeled_{}.json'.format(username))
 
     
     if os.path.exists(dictPath):
-        with open(dictPath,'rb') as f:
-            labelled_dict = pickle.load(f)
+        with open(dictPath,'r') as f:
+            labelled_dict = json.load(f)
     else:
         logging.warning("No dictionary found at: %s", dictPath)
         sys.exit()
@@ -73,7 +73,7 @@ def flow_to_dict(rawDirectory, labelledDirectory=None):
 def main():
     #Setup parser
     ap = argparse.ArgumentParser()
-    ap.add_argument("-i", "--input-directory", default=os.getcwd(), help="Path of the directory containing the raw images and labeled.pkl file. Defaults to current directory")
+    ap.add_argument("-i", "--input-directory", default=os.getcwd(), help="Path of the directory containing the raw images and labeled.json file. Defaults to current directory")
     ap.add_argument("-o", "--output-directory", help="Path of the output directory, will be created if it does not exist. Defaults to same as input directory.")
     ap.add_argument("-v", "--verbose", action='count', default=0, help="Enable verbose mode")
 

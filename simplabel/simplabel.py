@@ -5,7 +5,7 @@ from tkinter import simpledialog, filedialog
 from PIL import Image, ImageTk
 import os
 from functools import partial
-import pickle
+import json
 import time
 import sys
 import logging
@@ -39,7 +39,7 @@ class ImageClassifier(tk.Frame):
 
     Notable outputs
     -------
-    labelled_user.pkl : pickled dict(string: string)
+    labelled_user.json : pickled dict(string: string)
         Dictionary containing the labels in the form {'relative/path/image_name.jpg': label}
         This dict is saved to disk by the 'Save' button
     """
@@ -88,6 +88,7 @@ class ImageClassifier(tk.Frame):
         else:
             logging.info("No directory passed. Please select a directory...")
             response = filedialog.askdirectory(title="Select image directory",
+                                               parent=self.root,
                                                initialdir=os.getcwd(), mustexist=True)
             if os.path.isdir(response):
                 self.folder = response
@@ -96,7 +97,7 @@ class ImageClassifier(tk.Frame):
                 self.errorClose()
 
         # Directory containing the labels
-        self.labelpath = self.folder + "/labels.pkl"
+        self.labelpath = self.folder + "/.labels.json"
 
         # Initialize state variables
         self.saved = True
@@ -171,7 +172,7 @@ class ImageClassifier(tk.Frame):
         self.gotLock = True
 
         # Directory containing the saved labeled dictionary
-        self.savepath = self.folder + "/labeled_" + self.username +".pkl"
+        self.savepath = self.folder + "/labeled_" + self.username +".json"
 
         # Initialize UI
         self.initialize_ui()
@@ -267,8 +268,8 @@ class ImageClassifier(tk.Frame):
         if os.path.isfile(self.labelpath):
             if self.categories:
                 logging.warning("Found label file, ignoring labels passed as argument.")
-            with open(self.labelpath, 'rb') as f:
-                loadedLabels = pickle.load(f)
+            with open(self.labelpath, 'r') as f:
+                loadedLabels = json.load(f)
             # Sanitize loaded labels
             sanLabels = [self.sanitize_label_name(label) for label in loadedLabels]
             # Remove duplicates
@@ -285,8 +286,8 @@ class ImageClassifier(tk.Frame):
 
             # Save labels to file
             if not self.labels_from_file:
-                with open(self.labelpath, 'wb') as f:
-                    pickle.dump(self.categories, f)
+                with open(self.labelpath, 'w') as f:
+                    json.dump(self.categories, f)
 
         # If no file and no categories passed, leave categories as an empty list
         else:
@@ -437,7 +438,7 @@ class ImageClassifier(tk.Frame):
 
         # Save the master dictionary to disk
         logging.info('Saved the master dictionary to disk.')
-        self.dump_dict(masterDict, self.folder + '/labeled_master.pkl')
+        self.dump_dict(masterDict, self.folder + '/labeled_master.json')
 
         # Change the button color
         self.masterButton.config(highlightbackground='#3E4149', bg='#3E4149')
@@ -749,8 +750,8 @@ class ImageClassifier(tk.Frame):
 
         # Save labels to file
         if not self.labels_from_file:
-            with open(self.labelpath,'wb') as f:
-                pickle.dump(self.categories, f)
+            with open(self.labelpath,'w') as f:
+                json.dump(self.categories, f)
 
         # Redraw label buttons
         self.draw_label_buttons()
@@ -765,7 +766,7 @@ class ImageClassifier(tk.Frame):
             
     def get_all_users(self):
         '''Returns a list of all users detected in the directory'''
-        return [f.split('_')[1].split('.')[0] for f in os.listdir(self.folder) if (f.endswith('.pkl') and f.startswith('labeled_') and 'master' not in f)]
+        return [f.split('_')[1].split('.')[0] for f in os.listdir(self.folder) if (f.endswith('.json') and f.startswith('labeled_') and 'master' not in f)]
     
     def update_all_dict(self):
         '''Loads the labeling data from all detected users into a master dictionary.
@@ -791,7 +792,7 @@ class ImageClassifier(tk.Frame):
                         self.allLabeledDict[imageName] = {user: label}
             # For other users, load their dict and dump data into the allLabeledDict dictionary
             else:
-                dictPath = self.folder + "/labeled_" + user +".pkl"
+                dictPath = self.folder + "/labeled_" + user +".json"
                 userDict = self.load_dict(dictPath)
                 for (imageName, label) in userDict.items():
                     if imageName in self.allLabeledDict:
@@ -944,7 +945,7 @@ class ImageClassifier(tk.Frame):
             # Load all user's dictionaries in memory
             userDicts = {}
             for user in self.users:
-                userDicts[user] = self.load_dict(self.folder + "/labeled_" + user +".pkl")
+                userDicts[user] = self.load_dict(self.folder + "/labeled_" + user +".json")
 
             # For each image, save master label if it exists, otherwise, save user's original label or nothing.
             for img in self.reconciledLabelsDict:
@@ -952,7 +953,7 @@ class ImageClassifier(tk.Frame):
                     userDict[img] = self.reconciledLabelsDict[img]
             
             for (user, userDict) in userDicts.items():
-                self.dump_dict(userDict, self.folder + '/labeled_' + user + '.pkl')
+                self.dump_dict(userDict, self.folder + '/labeled_' + user + '.json')
             
             logging.info("Updated save data for users: {}".format(self.users))
 
@@ -965,13 +966,13 @@ class ImageClassifier(tk.Frame):
     
     def load_dict(self, file):
         '''Read a pickeled dictionary from file'''
-        with open(file,"rb") as f:
-            return pickle.load(f)
+        with open(file,"r") as f:
+            return json.load(f)
     
     def dump_dict(self, dict, file):
         '''Pickle a dictionary to file'''
-        with open(file, 'wb') as f:
-            pickle.dump(dict, f)
+        with open(file, 'w') as f:
+            json.dump(dict, f)
 
     def user_color_helper(self, username):
         '''Selects a color based on a username in a repeatable way also ensuring there are no conflicting colors if possible'''
@@ -1041,8 +1042,9 @@ class FsLock(object):
 def delete_all_files(directory):
     '''Deletes all files created by simplabel in a directory, this resets the labels and all saved data'''
 
-    save_files = [f for f in os.listdir(directory) if (f.endswith('.pkl') and f.startswith('label'))]
+    save_files = [f for f in os.listdir(directory) if (f.endswith('.json') and f.startswith('label'))]
     save_files.extend([f for f in os.listdir(directory) if f.startswith('.') and f.endswith('_lock.txt')])
+    save_files.extend([f for f in os.listdir(directory) if f.startswith('.label') and f.endswith('.json')])
     if len(save_files) > 0:
         response = input("Are you sure you want to delete all saved files: {}? (y/n)".format(save_files))
         if response == 'y':
@@ -1061,12 +1063,12 @@ def remove_label(directory, labelName):
     labelToRemove = labelName.strip().lower().capitalize()
 
     # Load the label file to check the presence of the label to remove
-    labelFile = directory + '/labels.pkl'
+    labelFile = directory + '/.labels.json'
     if os.path.isfile(labelFile):
-        with open(labelFile, 'rb') as f:
-            labels = pickle.load(f)
+        with open(labelFile, 'r') as f:
+            labels = json.load(f)
         if labelToRemove not in labels:
-            print("No such label in labels.pkl")
+            print("No such label in .labels.json")
             return
     else:
         print("No label file found.")
@@ -1074,21 +1076,21 @@ def remove_label(directory, labelName):
         
     
     # Get a list of users
-    users = [f.split('_')[1].split('.')[0] for f in os.listdir(directory) if (f.endswith('.pkl') and f.startswith('labeled_'))]
+    users = [f.split('_')[1].split('.')[0] for f in os.listdir(directory) if (f.endswith('.json') and f.startswith('labeled_'))]
 
     # Load each user's dictionary and check for the presense of the label to remove
     for user in users:
-        dictPath = directory + "/labeled_" + user +".pkl"
-        with open(dictPath, "rb") as f:
-            userDict = pickle.load(f)
+        dictPath = directory + "/labeled_" + user +".json"
+        with open(dictPath, "r") as f:
+            userDict = json.load(f)
         if labelToRemove in userDict.values():
             print("Label {} is used by {}, cannot remove it from the list".format(labelToRemove, user))
             return
 
     # If the check have passed, remove the label from the list and resave the list
     labels.remove(labelToRemove)
-    with open(labelFile, 'wb') as f:
-        pickle.dump(labels, f)
+    with open(labelFile, 'w') as f:
+        json.dump(labels, f)
     
     print("Successfully removed label {} from the list".format(labelToRemove))
     return

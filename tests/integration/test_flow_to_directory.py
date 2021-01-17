@@ -1,7 +1,7 @@
 import unittest
 
 import os
-import pickle
+import json
 import shutil
 import tkinter
 import _tkinter
@@ -15,14 +15,14 @@ class TestFlowToDict(unittest.TestCase):
 
         self.test_folder = 'tests/test_images'
         self.labeled_dir = os.path.join(self.test_folder, 'labeledDir')
-        self.label_file = os.path.join(self.test_folder, 'labels.pkl')
+        self.label_file = os.path.join(self.test_folder, '.labels.json')
 
         self.cleanup_files()
 
         # Create label file
         labels = ['Label1', 'Label2']
-        with open(self.label_file, 'wb') as f:
-            pickle.dump(labels, f)
+        with open(self.label_file, 'w') as f:
+            json.dump(labels, f)
 
         # User 1
         self.root1 = tkinter.Tk()
@@ -38,7 +38,7 @@ class TestFlowToDict(unittest.TestCase):
 
     def cleanup_files(self):
         # Delete any saved files
-        savefiles = [file for file in os.listdir(self.test_folder) if file.startswith("labeled_") and file.endswith(".pkl")]
+        savefiles = [file for file in os.listdir(self.test_folder) if file.startswith("labeled_") and file.endswith(".json")]
         if savefiles:
             for file in savefiles:
                 os.remove(os.path.join(self.test_folder, file))

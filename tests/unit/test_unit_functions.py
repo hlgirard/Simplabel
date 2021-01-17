@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from io import StringIO
 import os
-import pickle
+import json
 import tkinter
 import _tkinter
 
@@ -14,14 +14,14 @@ class Test_Unit_Functions(unittest.TestCase):
     def setUp(self):
 
         self.test_folder = 'tests/test_images'
-        self.label_file = os.path.join(self.test_folder, 'labels.pkl')
+        self.label_file = os.path.join(self.test_folder, '.labels.json')
 
         self.cleanup_files()
 
         # Create label file
         labels = ["Label1", "Label2"]
-        with open(self.label_file, 'wb') as f:
-            pickle.dump(labels, f)
+        with open(self.label_file, 'w') as f:
+            json.dump(labels, f)
 
         self.root=tkinter.Tk()
         self.pump_events()
@@ -42,7 +42,7 @@ class Test_Unit_Functions(unittest.TestCase):
 
     def cleanup_files(self):
         # Delete any saved files
-        savefiles = [file for file in os.listdir(self.test_folder) if file.startswith("labeled_") and file.endswith(".pkl")]
+        savefiles = [file for file in os.listdir(self.test_folder) if file.startswith("labeled_") and file.endswith(".json")]
         if savefiles:
             for file in savefiles:
                 os.remove(os.path.join(self.test_folder, file))
@@ -110,7 +110,7 @@ class Test_Unit_Functions(unittest.TestCase):
         with patch('builtins.input', return_value='y'):
             delete_all_files(self.test_folder)
 
-        savefiles = [file for file in os.listdir(self.test_folder) if file.startswith("labeled_") and file.endswith(".pkl")]
+        savefiles = [file for file in os.listdir(self.test_folder) if file.startswith("labeled_") and file.endswith(".json")]
         lockfiles = [file for file in os.listdir(self.test_folder) if file.endswith("_lock.txt")]
         
         self.assertEqual(len(savefiles), 0)
@@ -122,14 +122,14 @@ class Test_Remove_Labels(unittest.TestCase):
     def setUp(self):
 
         self.test_folder = 'tests/test_images'
-        self.label_file = os.path.join(self.test_folder, 'labels.pkl')
+        self.label_file = os.path.join(self.test_folder, '.labels.json')
 
         self.cleanup_files()
 
         # Create label file
         labels = ["Label1", "Label2"]
-        with open(self.label_file, 'wb') as f:
-            pickle.dump(labels, f)
+        with open(self.label_file, 'w') as f:
+            json.dump(labels, f)
 
         self.root=tkinter.Tk()
         self.pump_events()
@@ -144,7 +144,7 @@ class Test_Remove_Labels(unittest.TestCase):
 
     def cleanup_files(self):
         # Delete any saved files
-        savefiles = [file for file in os.listdir(self.test_folder) if file.startswith("labeled_") and file.endswith(".pkl")]
+        savefiles = [file for file in os.listdir(self.test_folder) if file.startswith("labeled_") and file.endswith(".json")]
         if savefiles:
             for file in savefiles:
                 os.remove(os.path.join(self.test_folder, file))
@@ -178,13 +178,13 @@ class Test_Remove_Labels(unittest.TestCase):
 
         self.assertEqual(printed, "Successfully removed label Label2 from the list".strip())
         
-        with open(self.label_file, 'rb') as f:
-            labels = pickle.load(f)
+        with open(self.label_file, 'r') as f:
+            labels = json.load(f)
         
         self.assertNotIn("Label2", labels)
 
     def test_remove_used_label(self):
-        '''Removing a used label should fail and the label should remain in labels.pkl'''
+        '''Removing a used label should fail and the label should remain in labels.json'''
 
         # Classify an image with Label1
         self.classifier.catButton[0].invoke()
@@ -203,8 +203,8 @@ class Test_Remove_Labels(unittest.TestCase):
 
         self.assertEqual(printed, "Label Label1 is used by testuser, cannot remove it from the list".strip())
         
-        with open(self.label_file, 'rb') as f:
-            labels = pickle.load(f)
+        with open(self.label_file, 'r') as f:
+            labels = json.load(f)
         
         self.assertIn("Label1", labels)
 
@@ -231,19 +231,19 @@ class Test_Remove_Labels(unittest.TestCase):
 
 
 class Test_Misformed_Labels(unittest.TestCase):
-    '''Test that the app is robust to misformed labels in the labels.pkl file'''
+    '''Test that the app is robust to misformed labels in the labels.json file'''
 
     def setUp(self):
 
         self.test_folder = 'tests/test_images'
-        self.label_file = os.path.join(self.test_folder, 'labels.pkl')
+        self.label_file = os.path.join(self.test_folder, '.labels.json')
 
         self.cleanup_files()
 
         # Create label file
         labels = ["Label1", "label2", "Label1", "label with spaces", "trailing space ", " leading space"]
-        with open(self.label_file, 'wb') as f:
-            pickle.dump(labels, f)
+        with open(self.label_file, 'w') as f:
+            json.dump(labels, f)
 
         self.root=tkinter.Tk()
         self.pump_events()
@@ -264,7 +264,7 @@ class Test_Misformed_Labels(unittest.TestCase):
 
     def cleanup_files(self):
         # Delete any saved files
-        savefiles = [file for file in os.listdir(self.test_folder) if file.startswith("labeled_") and file.endswith(".pkl")]
+        savefiles = [file for file in os.listdir(self.test_folder) if file.startswith("labeled_") and file.endswith(".json")]
         if savefiles:
             for file in savefiles:
                 os.remove(os.path.join(self.test_folder, file))

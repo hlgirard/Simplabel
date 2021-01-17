@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch
 
 import os
-import pickle
+import json
 import tkinter
 import _tkinter
 
@@ -13,14 +13,14 @@ class TestLabelingTool(unittest.TestCase):
     def setUp(self):
 
         self.test_folder = 'tests/test_images'
-        self.label_file = os.path.join(self.test_folder, 'labels.pkl')
+        self.label_file = os.path.join(self.test_folder, '.labels.json')
 
         self.cleanup_files()
 
         # Create label file
         labels = ["Label1", "Label2"]
-        with open(self.label_file, 'wb') as f:
-            pickle.dump(labels, f)
+        with open(self.label_file, 'w') as f:
+            json.dump(labels, f)
 
         self.root=tkinter.Tk()
         self.pump_events()
@@ -41,7 +41,7 @@ class TestLabelingTool(unittest.TestCase):
 
     def cleanup_files(self):
         # Delete any saved files
-        savefiles = [file for file in os.listdir(self.test_folder) if file.startswith("labeled_") and file.endswith(".pkl")]
+        savefiles = [file for file in os.listdir(self.test_folder) if file.startswith("labeled_") and file.endswith(".json")]
         if savefiles:
             for file in savefiles:
                 os.remove(os.path.join(self.test_folder, file))
@@ -102,8 +102,8 @@ class TestLabelingTool(unittest.TestCase):
         self.classifier.catButton[1].invoke()
         self.classifier.saveButton.invoke()
 
-        with open(os.path.join(self.test_folder, "labeled_testuser.pkl"), 'rb') as savefile:
-            savedict = pickle.load(savefile)
+        with open(os.path.join(self.test_folder, "labeled_testuser.json"), 'r') as savefile:
+            savedict = json.load(savefile)
 
         self.assertEqual(savedict[imgName], self.classifier.labeled[imgName])
 
@@ -131,8 +131,8 @@ class TestLabelingTool(unittest.TestCase):
         self.assertEqual(len(self.classifier.catButton), 3)
 
         # Check that the label was saved to file
-        with open(self.label_file, 'rb') as f:
-            savedlabels = pickle.load(f)
+        with open(self.label_file, 'r') as f:
+            savedlabels = json.load(f)
 
         self.assertIn("Label3", savedlabels)
 
@@ -153,8 +153,8 @@ class TestLabelingTool(unittest.TestCase):
         self.assertEqual(len(self.classifier.catButton), 2)
 
         # Check that the label was saved to file
-        with open(self.label_file, 'rb') as f:
-            savedlabels = pickle.load(f)
+        with open(self.label_file, 'r') as f:
+            savedlabels = json.load(f)
 
         self.assertEqual(len(savedlabels),2)
 
@@ -190,8 +190,8 @@ class TestLabelingTool(unittest.TestCase):
         self.assertEqual(len(self.classifier.labelFrameList), 3)
 
         # Check that the labels were saved to file
-        with open(self.label_file, 'rb') as f:
-            savedlabels = pickle.load(f)
+        with open(self.label_file, 'r') as f:
+            savedlabels = json.load(f)
 
         self.assertEqual(len(savedlabels),10)
     

@@ -1,7 +1,7 @@
 import unittest
 
 import os
-import pickle
+import json
 import tkinter
 import _tkinter
 
@@ -12,14 +12,14 @@ class TestMultiUser(unittest.TestCase):
     def setUp(self):
 
         self.test_folder = 'tests/test_images'
-        self.label_file = os.path.join(self.test_folder, 'labels.pkl')
+        self.label_file = os.path.join(self.test_folder, '.labels.json')
 
         self.cleanup_files()
 
         # Create label file
         labels = ['Label1', 'Label2']
-        with open(self.label_file, 'wb') as f:
-            pickle.dump(labels, f)
+        with open(self.label_file, 'w') as f:
+            json.dump(labels, f)
 
         # User 1
         self.root1 = tkinter.Tk()
@@ -35,7 +35,7 @@ class TestMultiUser(unittest.TestCase):
 
     def cleanup_files(self):
         # Delete any saved files
-        savefiles = [file for file in os.listdir(self.test_folder) if file.startswith("labeled_") and file.endswith(".pkl")]
+        savefiles = [file for file in os.listdir(self.test_folder) if file.startswith("labeled_") and file.endswith(".json")]
         if savefiles:
             for file in savefiles:
                 os.remove(os.path.join(self.test_folder, file))
@@ -170,9 +170,9 @@ class TestMultiUser(unittest.TestCase):
         # Make master
         classifier2.masterButton.invoke()
 
-        # Check contents of the master_labeled.pkl
-        with open(os.path.join(self.test_folder, "labeled_master.pkl"), 'rb') as savefile:
-            savedict = pickle.load(savefile)
+        # Check contents of the master_labeled.json
+        with open(os.path.join(self.test_folder, "labeled_master.json"), 'r') as savefile:
+            savedict = json.load(savefile)
 
         testdict = {"all_crystals.JPG": "Label1", "empty_droplets.JPG": "Label1", "some_crystals.JPG": "Label1"}
         self.assertEqual(savedict, testdict)
